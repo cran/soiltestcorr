@@ -1,0 +1,59 @@
+---
+title: "Introduction"
+author: Adrian Correndo & Austin Pearce 
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width=6, 
+  fig.height=4
+)
+```
+
+<img src="../man/figures/soiltestcorr_logo.png" align="right" height="200" style="float:right; height:200px;">
+
+The functions in the `soiltestcorr` package are intended to be used when analyzing the correlation between soil test values (stv) and relative yield (ry). This tutorial will introduce and demonstrate the currently available functions. <br/>
+
+## 1. Installation
+
+You can install the development version of `soiltestcorr` from [GitHub](https://github.com/adriancorrendo/soiltestcorr) with:
+
+``` r
+# install.packages("devtools")
+devtools::install_github("adriancorrendo/soiltestcorr")
+```
+
+```{r setup}
+library(soiltestcorr)
+```
+
+Suggested packages are
+```{r warning=FALSE, message=FALSE}
+library(ggplot2) # Plots
+library(dplyr) # Data wrangling
+library(tidyr) # Data wrangling
+library(purrr) # Mapping
+
+```
+
+## 2. Available models in `soiltestcorr`: <br/>
+
+### 2.1. [Modified Arcsine-Log Calibration Curve](https://adriancorrendo.github.io/soiltestcorr/articles/mod_alcc_tutorial.html) <br/>
+
+### 2.2. [Cate & Nelson (1965)](https://adriancorrendo.github.io/soiltestcorr/articles/cate_nelson_1965_tutorial.html) <br/>
+
+### 2.3. [Cate & Nelson (1971)](https://adriancorrendo.github.io/soiltestcorr/articles/cate_nelson_1971_tutorial.html) <br/>
+
+### 2.4. [Linear-plateau](https://adriancorrendo.github.io/soiltestcorr/articles/linear_plateau_tutorial.html) <br/>
+
+### 2.5. [Quadratic-plateau](https://adriancorrendo.github.io/soiltestcorr/articles/quadratic_plateau_tutorial.html) <br/>
+
+### 2.6. [Mitscherlich](https://adriancorrendo.github.io/soiltestcorr/articles/mitscherlich_tutorial.html) <br/>
+
