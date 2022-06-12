@@ -5,19 +5,33 @@
 
 <!-- badges: start -->
 
+[![CRAN
+status](https://www.r-pkg.org/badges/version/soiltestcorr)](https://CRAN.R-project.org/package=soiltestcorr)
+[![CRAN RStudio mirror
+downloads](https://cranlogs.r-pkg.org/badges/grand-total/soiltestcorr?color=blue)](https://r-pkg.org/pkg/soiltestcorr)
+[![CRAN RStudio mirror
+downloads](https://cranlogs.r-pkg.org/badges/last-month/soiltestcorr?color=blue)](https://r-pkg.org/pkg/soiltestcorr)
+<br/>
+
 [![AppVeyor build
 status](https://ci.appveyor.com/api/projects/status/github/adriancorrendo/soiltestcorr?branch=main&svg=true)](https://ci.appveyor.com/project/adriancorrendo/soiltestcorr)
 [![R-CMD-check](https://github.com/adriancorrendo/soiltestcorr/workflows/R-CMD-check/badge.svg)](https://github.com/adriancorrendo/soiltestcorr/actions)
 [![codecov](https://codecov.io/gh/adriancorrendo/soiltestcorr/branch/main/graph/badge.svg?token=OUH9NBPBXI)](https://app.codecov.io/gh/adriancorrendo/soiltestcorr)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6518828.svg)](https://doi.org/10.5281/zenodo.6518828)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6539519.svg)](https://doi.org/10.5281/zenodo.6539519)
 
 <!-- badges: end -->
 
 <img src="man/figures/soiltestcorr_logo.png" align="right" height="200" style="float:right; height:200px;">
 <br/>
 
-You can install the development version of soiltestcorr from
-[GitHub](https://github.com/adriancorrendo/soiltestcorr) with:
+You can install the latest CRAN version of `soiltestcorr` with: <br/>
+
+``` r
+install.packages("soiltestcorr")
+```
+
+Alternatively, you can install the development version of soiltestcorr
+from [GitHub](https://github.com/adriancorrendo/soiltestcorr) with:
 
 ``` r
 # install.packages("devtools")
@@ -56,26 +70,27 @@ Mitscherlich](https://adriancorrendo.github.io/soiltestcorr/articles/mitscherlic
 
 # Description <br/>
 
-The goal of `soiltestcorr` is to assist users on the analysis of
-relationships between relative yield (ry) and soil test values (stv)
-following different approaches. <br/>
+The goal of `soiltestcorr` is to assist users on reproducible analysis
+of relationships between crop relative yield (ry) and soil test values
+(stv) following different approaches. <br/>
 
-Available functions (version 2.1.1, 05-10-2022): <br/>
+The available methods of correlation analysis in `soiltestcorr` are:
+<br/>
 
 ## 1. Modified Arcsine-Log Calibration Curve <br/>
 
-The first calibration method available is the Modified Arcsine-log
-Calibration Curve (`mod_alcc()`) originally described by Dyson and
-Conyers (2013) and modified by Correndo et al. (2017). This function
-produces the estimation of critical soil test values (CSTV) for a target
-relative yield (ry) with confidence intervals at adjustable confidence
-levels. <br/>
+The first method available is the Modified Arcsine-log Calibration Curve
+(`mod_alcc()`) originally described by Dyson and Conyers (2013) and
+modified by Correndo et al. (2017). This function produces the
+estimation of critical soil test values (CSTV) for a target relative
+yield (ry) with confidence intervals at adjustable confidence levels.
+<br/>
 
 <b> mod_alcc() </b> <br/>
 
 Instructions <br/>
 
-1.  Load your dataframe with soil test value (stv) and relative yield
+1.  Load your data.frame with soil test value (stv) and relative yield
     (ry) data. <br/>
 
 2.  Specify the following arguments into the function -mod_alcc()-:
@@ -100,12 +115,23 @@ limits. <br/>
 
 3.  Run and check results. <br/>
 
-4.  Check residuals plot, and warnings related to potential leverage
-    points. <br/>
+4.  Check residuals plot (see Section [3.3 SMA
+    Residuals](https://adriancorrendo.github.io/soiltestcorr/articles/mod_alcc_tutorial.html#sma-residuals)),
+    and warnings related to potential leverage points. <br/>
 
 5.  Adjust curve plots as desired. <br/>
 
 Example of mod_alcc() output
+
+    #> Warning: One or more original RY values exceeded 100%. All RY values greater 
+    #>           than 100% have been capped to 100%.
+    #> Warning: 2 STV points exceeded the CSTV for 100% of RY.
+    #>   Risk of leverage. You may consider a sensitivity analysis by removing extreme points, 
+    #>   re-run the mod_alcc(), and check results.
+    #> Warning: 2 STV points exceeded two-times (2x) 
+    #>   the CSTV for 90% of RY. Risk of leverage. You may consider a sensitivity analysis by 
+    #>   removing extreme points, re-run the mod_alcc(), and check results.
+
 <img src="man/figures/README-unnamed-chunk-3-1.png" width="100%" />
 
 ## 2. Cate & Nelson Quadrants Analysis (1965) <br/>
@@ -129,7 +155,7 @@ version of the Cate-Nelson approach. <br/>
 
 Instructions <br/>
 
-1.  Load your dataframe with soil test value (stv) and relative yield
+1.  Load your data.frame with soil test value (stv) and relative yield
     (ry) data. <br/>
 
 2.  Specify the following arguments into the function
@@ -169,7 +195,7 @@ the Cate-Nelson approach. <br/>
 
 Instructions <br/>
 
-1.  Load your dataframe with soil test value (stv) and relative yield
+1.  Load your data.frame with soil test value (stv) and relative yield
     (ry) data. <br/>
 
 2.  Specify the following arguments into the function
@@ -195,21 +221,25 @@ Example of cate_nelson_1971() output
 
 ## 4. Linear-plateau Regression </b> <br/>
 
-The next calibration method available is the linear-plateau model
+The next method available is the linear-plateau model
 (`linear_plateau()`). This function fits the classical regression
 response model that follows two phases: i) a first linear phase
-described as y = b0 + b1 x, and ii) a second phase were the RY response
-to increasing STV becomes NULL (flat), described as plateau = y = b0 +
-b1 Xc, where Xc represents the CSTV. The function works automatically
-with self starting initial values to facilitate the model’s convergence.
-<br/>
+described as `y = a + b*x`, and ii) a second plateau-phase (Anderson and
+Nelson, 1975) were the `ry` response to increasing `stv` becomes NULL
+(flat), described as `plateau = y = a + b*Xc`, where `y` represents the
+fitted crop relative yield, `x` the soil test value, `a` the intercept
+(ry when stv = 0) , `b` the slope (as the change in ry per unit of soil
+nutrient supply or nutrient added), and `X_c` the join-point when the
+plateau-phase starts (i.e. the CSTV). The `linear_plateau()` function
+works automatically with self starting initial values to facilitate the
+model’s convergence. <br/>
 
 <b> linear_plateau() </b> <br/>
 
 Instructions <br/>
 
-1.  Load your dataframe with soil test value (stv) and relative yield
-    (ry) data. <br/>
+1.  Load your data.frame or vectors with soil test value (stv) and
+    relative yield (ry) data. <br/>
 
 2.  Specify the following arguments into the function
     -linear_plateau()-: <br/>
@@ -219,8 +249,8 @@ Instructions <br/>
 (b). `stv` (soil test value) and `ry` (relative yield) columns or
 vectors, <br/>
 
-(c). `target` (optional) if want a CSTV for a different \`ry\`\` than
-the plateau.
+(c). `target` (optional) if want to know stv level needed for a
+different \`ry\`\` than the plateau.
 
 (d). `plot` TRUE (produces a ggplot as main output) or FALSE (no plot,
 only results as data.frame), <br/>
@@ -240,20 +270,26 @@ Example of linear_plateau() output
 
 ## 5. Quadratic-plateau Regression </b> <br/>
 
-The following calibration method available is the quadratic-plateau
+The following correlation method available is the quadratic-plateau
 model (`quadratic_plateau()`). This function fits the classical
 regression response model that follows two phases: i) a first
-curvilinear phase described as y = b0 + b1 x + b2 x^2, and ii) a second
-phase were the RY response to increasing STV becomes NULL (flat),
-described as plateau = y = b0 + b1 Xc + b2 \* Xc, where Xc represents
-the CSTV. The function works automatically with self starting initial
-values to facilitate the model convergence. <br/>
+curvilinear phase described as `y = a + b*x + c*x^2`, and ii) a second
+plateau-phase (Bullock and Bullock, 1994) were the `ry` response to
+increasing `stv` becomes NULL (flat), described as
+`plateau = y = a + b*Xc + c*Xc`, where `y` represents the fitted crop
+relative yield, `x` the soil test value, `a` the intercept (ry when stv
+= 0) , `b` the linear slope (as the change in ry per unit of soil
+nutrient supply or nutrient added), `c` the quadratic coefficient
+(giving the curve shape), and `X_c` the join-point when the
+plateau-phase starts (i.e. the CSTV). The `quadratic_plateau()` function
+works automatically with self starting initial values to facilitate the
+model convergence. <br/>
 
-<b> linear_plateau() </b> <br/>
+<b> quadratic_plateau() </b> <br/>
 
 Instructions <br/>
 
-1.  Load your dataframe with soil test value (stv) and relative yield
+1.  Load your data.frame with soil test value (stv) and relative yield
     (ry) data. <br/>
 
 2.  Specify the following arguments into the function
@@ -264,8 +300,8 @@ Instructions <br/>
 (b). `stv` (soil test value) and `ry` (relative yield) columns or
 vectors, <br/>
 
-(c). `target` (optional) if want a CSTV for a different \`ry\`\` than
-the plateau.
+(c). `target` (optional) if want to know stv level needed for a
+different \`ry\`\` than the plateau.
 
 (d). `plot` TRUE (produces a ggplot as main output) or FALSE (no plot,
 only results as data.frame), <br/>
@@ -286,21 +322,38 @@ Example of quadratic_plateau() output <br/>
 
 ## 6. Mitscherlich Regression </b> <br/>
 
+This function fits an exponential regression response model (Melsted and
+Peck, 1977) that follows a curve shape described as
+`y = a * (1-exp(-c(x + b))`, where `a = asymptote`, `b = xintercept`,
+`c = rate or curvature parameter`. The `mitscherlich()` function works
+automatically with self starting initial values to facilitate the
+model’s convergence. This approach is extensively used in agriculture to
+describe crops response to input since the biological meaning of its
+curved response. With 3 alternatives to fit the model, this function
+brings the advantage of controlling the parameters quantity: i) type = 1
+(DEFAULT), corresponding to the model without any restrictions to the
+parameters (`y = a * (1-exp(-c(x + b))`); ii) type = 2 (“asymptote
+100”), corresponding to the model with only 2 parameters by setting the
+asymptote = 100 (`y = 100 * (1-exp(-c(x + b))`), and iii) type = 3
+(“asymptote 100 from 0”), corresponding to the model with only 1
+parameter by constraining the asymptote = 100 and xintercept = 0
+(`y = 100 * (1-exp(-c(x))`). <br/>
+
 Instructions <br/>
 
-1.  Load your dataframe with soil test value (stv) and relative yield
+1.  Load your data.frame with soil test value (stv) and relative yield
     (ry) data. <br/>
 
-2.  Specify the following arguments into the function
-    -quadratic_plateau()-: <br/>
+2.  Specify the following arguments into the function -mitscherlich()-:
+    <br/>
 
 (a). `data` (optional), <br/>
 
 (b). `stv` (soil test value) and `ry` (relative yield) columns or
 vectors, <br/>
 
-(c). `target` (optional) if want a CSTV for a different \`ry\`\` than
-the plateau.
+(c). `target` (optional) if want to know stv level needed for a specific
+`ry`.
 
 (d). `plot` TRUE (produces a ggplot as main output) or FALSE (no plot,
 only results as data.frame), <br/>

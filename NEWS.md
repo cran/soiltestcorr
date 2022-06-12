@@ -1,11 +1,24 @@
+# soiltestcorr 2.1.2
+
+* June 11th, 2022. <br/>
+
+General maintenance update.
+- Documentation updating authors' contributions, and mention main research projects supporting the development of the package (FRST and SIIL).
+- Fixing minor bugs on the CSTV estimation (and plot) when using the "target" argument within linear_plateau() and quadratic_plateau() functions. When "target" is activated for these functions, output is STVt (stv-target) instead of CSTV (which corresponds)
+- Minor typos on the vignettes.  
+
+## Previous versions
+
+# soiltestcorr 2.1.1
+
+* First CRAN release, accepted on May 11th, 2022.
+
 # soiltestcorr 2.1.1
 
 * May, 10, 2022. <br/>
 
 Maintenance update fixing minor details in documentation after feedback from CRAN submission of v2.1.0. 
 Changes include: i) adding references in DESCRIPTION, functions, and vignettes; and ii) removing brackets from examples (replacing 'dontrun' by 'donttest').
-
-## Previous versions
 
 # soiltestcorr 2.1.0
 

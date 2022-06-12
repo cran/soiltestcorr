@@ -228,16 +228,21 @@ linear_plateau <- function(data = NULL,
                                     call. = FALSE) 
   }
   }
-  CSTV <- ifelse(is.null(target), 
-                 round(stats::coef(lp_model)[[3]], 1),
-                 ifelse(target < stats::coef(lp_model)[[3]],
-                 (target - b0) / b1,
-                 (target - b0) / b1) )
+  
   # confidence interval for CSTV
   lp_model.confint <- nlstools::confint2(lp_model)
   CSTV_lower <- lp_model.confint[[3,1]]
   CSTV_upper <- lp_model.confint[[3,2]]
-  plateau <- b0 + b1 * CSTV
+  plateau <- b0 + b1 * stats::coef(lp_model)[[3]]
+  
+  # CSTV
+  CSTV <- round(stats::coef(lp_model)[[3]], 1)
+  STVt <- ifelse(is.null(target), 
+                 round(stats::coef(lp_model)[[3]], 1),
+                 ifelse(target >= plateau,
+                        (plateau - b0) / b1,
+                        (target - b0) / b1) )
+  
   
   # have to make a line because the SS_LP doesn't plot right
   lp_line <- data.frame(x = seq(minx, maxx, by = maxx/200)) %>%
@@ -265,9 +270,10 @@ linear_plateau <- function(data = NULL,
                       target,
                       round(plateau, 1)),
       CSTV = round(CSTV, 1),
-      LL_cxp = round(CSTV_lower,1),
-      UL_cxp = round(CSTV_upper,1),
+      LL_cstv = round(CSTV_lower,1),
+      UL_cstv = round(CSTV_upper,1),
       CI_type = "Wald Conf. Interval",
+      STVt = round(STVt,1),
       AIC,
       AICc,
       R2
@@ -293,33 +299,44 @@ linear_plateau <- function(data = NULL,
       ggplot2::geom_rug(alpha = 0.2, length = ggplot2::unit(2, "pt")) +
       # Data points
       ggplot2::geom_point(shape = 21, size = 3, alpha = 0.75, fill = "#e09f3e") +
-      # CSTV
-      ggplot2::geom_vline(xintercept = CSTV, alpha = 1, color = "#13274F", 
-                          size = 0.5, linetype = "dashed") +
+      # CSTV for break point
+      {if (is.null(target))
+        ggplot2::geom_vline(xintercept = CSTV, alpha = 1, color = "#13274F", 
+                            size = 0.5, linetype = "dashed") } +
+      # annotation
+      {if (is.null(target))
+        ggplot2::annotate("text",label = paste("CSTV =", round(CSTV,1), "ppm"),
+                          x = CSTV, y = 0, angle = 90, hjust = 0, vjust = 1.5, col = "grey25") } +
+      # CSTV for TARGET
+      {if (!is.null(target))
+        ggplot2::geom_vline(xintercept = STVt, alpha = 1, color = "#13274F", 
+                            size = 0.5, linetype = "dashed") } +
+      # CSTV annotation
+      {if (!is.null(target))
+        ggplot2::annotate("text",label = paste(ifelse(target < plateau, "STVt =", "CSTV ="), round(STVt,1),"ppm"),
+                          x = STVt, y = 0, angle = 90, hjust = 0, vjust = 1.5, col = "grey25") } +
       # CI
       { if (is.null(target)) 
         geom_vline(xintercept = CSTV_lower, col = "grey25", size = 0.25, linetype = "dotted") } +
       { if (is.null(target))
         geom_vline(xintercept = CSTV_upper, col = "grey25", size = 0.25, linetype = "dotted") } +
       # Plateau
-      ggplot2::geom_hline(yintercept = plateau, alpha = 0.2) +
+      { if(is.null(target))
+        ggplot2::geom_hline(yintercept = plateau, alpha = 0.2) } +
+      { if(!is.null(target))
+        ggplot2::geom_hline(yintercept = ifelse(target < plateau, target, plateau), alpha = 0.2) } +
       # LP Curve
       ggplot2::geom_line(data = lp_line, ggplot2::aes(x=x,y=y), color="grey15", size = 1.5) +
       # Text annotations
-      ggplot2::annotate("text",label = paste("CSTV =", round(CSTV,1), "ppm"),
-                        x = CSTV, y = 0, angle = 90, hjust = 0, vjust = 1.5, col = "grey25") +
-      # Target if null
-      {
-        if(is.null(target))
+      # Target = null
+      { if(is.null(target))
           ggplot2::annotate("text",label = paste0("Plateau = ", round(plateau, 0), "%"),
-                            x = maxx, y = plateau, hjust = 1,vjust = 1.5, col = "grey25") 
-      } +
-      # Target if null == a
-      {
-        if(!is.null(target))
-          ggplot2::annotate("text",label = paste0("Target = ", round(target, 0), "%"),
-                            x = maxx, y = target, hjust = 1,vjust = 1.5, col = "grey25") 
-      } +
+                            x = maxx, y = plateau, hjust = 1,vjust = 1.5, col = "grey25")  } +
+      # Target if not null
+      {  if(!is.null(target))
+          ggplot2::annotate("text",label = paste0(ifelse(target < plateau, "Target = ", "Plateau = "), round(ifelse(target < plateau, target, plateau), 0), "%"),
+                            x = maxx, y = ifelse(target < plateau, target, plateau), hjust = 1,vjust = 1.5, col = "grey25")     } +
+      
       ggplot2::annotate("text", col = "grey25",
                         label = paste0("y = ", equation, 
                                        "\nn = ", nrow(test.data),
