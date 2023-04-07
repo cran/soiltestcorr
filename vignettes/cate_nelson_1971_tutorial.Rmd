@@ -3,7 +3,7 @@ title: "Cate and Nelson (1971)"
 author: Adrian Correndo 
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Cate and Nelson (1971)}
+  %\VignetteIndexEntry{a04}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -55,7 +55,6 @@ library(ggplot2) # Plots
 library(dplyr) # Data wrangling
 library(tidyr) # Data wrangling
 library(utils) # Data wrangling
-library(data.table) # Mapping
 library(purrr) # Mapping
 
 ```
@@ -110,13 +109,13 @@ It returns a data.frame (more organized results) <br/>
 ```{r warning=TRUE, message=TRUE}
 
 # Using dataframe argument, tidy = FALSE -> return a LIST
-fit_1_tidy_false <- 
+fit_1_tidy_true <- 
   soiltestcorr::cate_nelson_1971(data = data_1,
                                  ry = RY,
                                  stv = STV,
                                  tidy = TRUE)
 
-utils::head(fit_1_tidy_false)
+utils::head(fit_1_tidy_true)
 
 ```
 
@@ -149,6 +148,7 @@ fit_2 <-
                                  tidy = TRUE)
 
 utils::head(fit_2)
+
 ```
 
 ### 1.5. Data 3. Freitas et al. 1966 <br/>
@@ -194,7 +194,7 @@ utils::head(fit_multiple_map)
 
 ```
 
-### 2.1. Using group_map <br/>
+### 2.2. Using group_map <br/>
 
 Alternatively, with group_map, we do not require nested data. <br/>
 
@@ -207,7 +207,7 @@ fit_multiple_group_map <-
   data.all %>% tidyr::unnest(data) %>% 
   #dplyr::bind_rows(data_1, data_2, .id = "id") %>% 
   dplyr::group_by(id) %>% 
-  dplyr::group_map(~ soiltestcorr::cate_nelson_1971(data = ., 
+  dplyr::group_modify(~ soiltestcorr::cate_nelson_1971(data = ., 
                                              ry = RY,
                                              stv = STV, 
                                              tidy = TRUE))
@@ -216,9 +216,33 @@ utils::head(fit_multiple_group_map)
 
 ```
 
-## 3. Plots
+## 3. Bootstrapping <br/>
 
-### 3.1. Calibration Curve 
+A suitable alternative for obtaining confidence intervals for parameters or derived quantities is bootstrapping. <br/>
+
+Bootstrapping is a resampling technique (with replacement) that draws samples from the original data with the same size. If you have groups within your data, you can specify grouping variables as arguments in order to maintain, within each resample, the same proportion of observations than in the original dataset. <br/>
+
+This function returns a table with as many rows as the resampling size (n) containing the results for each resample.
+
+```{r}
+boot_cn71 <- soiltestcorr::boot_cn_1971(data = data_1,
+                          ry = RY, stv = STV, n = 99)
+
+boot_cn71 %>% dplyr::slice_head(., n=5)
+
+# CSTV Confidence Interval
+quantile(boot_cn71$CSTV, probs = c(0.025, 0.5, 0.975))
+
+# Plot
+boot_cn71 %>% 
+  ggplot2::ggplot(aes(x = CSTV))+
+  geom_histogram(color = "grey25", fill = "#9de0bf", bins = 10)
+
+```
+
+## 4. Plots
+
+### 4.1. Calibration Curve 
 
 We can generate a ggplot with the same mod_alcc() function. <br/>
 

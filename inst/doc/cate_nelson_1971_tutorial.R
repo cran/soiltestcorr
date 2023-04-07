@@ -15,7 +15,6 @@ library(ggplot2) # Plots
 library(dplyr) # Data wrangling
 library(tidyr) # Data wrangling
 library(utils) # Data wrangling
-library(data.table) # Mapping
 library(purrr) # Mapping
 
 
@@ -51,13 +50,13 @@ utils::head(fit_1_tidy_false)
 ## ----warning=TRUE, message=TRUE-----------------------------------------------
 
 # Using dataframe argument, tidy = FALSE -> return a LIST
-fit_1_tidy_false <- 
+fit_1_tidy_true <- 
   soiltestcorr::cate_nelson_1971(data = data_1,
                                  ry = RY,
                                  stv = STV,
                                  tidy = TRUE)
 
-utils::head(fit_1_tidy_false)
+utils::head(fit_1_tidy_true)
 
 
 ## ----warning=TRUE, message=TRUE-----------------------------------------------
@@ -81,6 +80,7 @@ fit_2 <-
                                  tidy = TRUE)
 
 utils::head(fit_2)
+
 
 ## ----warning=TRUE, message=TRUE-----------------------------------------------
 
@@ -118,12 +118,27 @@ fit_multiple_group_map <-
   data.all %>% tidyr::unnest(data) %>% 
   #dplyr::bind_rows(data_1, data_2, .id = "id") %>% 
   dplyr::group_by(id) %>% 
-  dplyr::group_map(~ soiltestcorr::cate_nelson_1971(data = ., 
+  dplyr::group_modify(~ soiltestcorr::cate_nelson_1971(data = ., 
                                              ry = RY,
                                              stv = STV, 
                                              tidy = TRUE))
 
 utils::head(fit_multiple_group_map)
+
+
+## -----------------------------------------------------------------------------
+boot_cn71 <- soiltestcorr::boot_cn_1971(data = data_1,
+                          ry = RY, stv = STV, n = 99)
+
+boot_cn71 %>% dplyr::slice_head(., n=5)
+
+# CSTV Confidence Interval
+quantile(boot_cn71$CSTV, probs = c(0.025, 0.5, 0.975))
+
+# Plot
+boot_cn71 %>% 
+  ggplot2::ggplot(aes(x = CSTV))+
+  geom_histogram(color = "grey25", fill = "#9de0bf", bins = 10)
 
 
 ## ----warning=F, message=F-----------------------------------------------------

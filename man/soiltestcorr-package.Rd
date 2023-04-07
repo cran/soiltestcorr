@@ -12,6 +12,8 @@ A compilation of functions designed to assist users on the correlation analysis 
 Useful links:
 \itemize{
   \item \url{https://adriancorrendo.github.io/soiltestcorr/}
+  \item \url{https://soiltestfrst.org/}
+  \item \url{https://www.siildigitalagconsortium.com/}
   \item Report bugs at \url{https://github.com/adriancorrendo/soiltestcorr/issues}
 }
 
@@ -25,6 +27,11 @@ Authors:
   \item Austin Pearce \email{awpearc2@ncsu.edu} (\href{https://orcid.org/0000-0002-2541-896X}{ORCID})
   \item Deanna Osmond \email{deanna_osmond@ncsu.edu} (\href{https://orcid.org/0000-0002-6336-8318}{ORCID})
   \item Ignacio A. Ciampitti \email{ciampitti@ksu.edu} (\href{https://orcid.org/0000-0001-9619-5129}{ORCID})
+}
+
+Other contributors:
+\itemize{
+  \item Fernando Miguez \email{femiguez@iastate.edu} (\href{https://orcid.org/0000-0002-4627-8329}{ORCID}) [contributor]
 }
 
 }

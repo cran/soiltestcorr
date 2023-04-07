@@ -8,13 +8,15 @@
 #' @param ry name of the vector containing relative yield values (%) of type `numeric`.
 #' @param target `numeric` value of relative yield target (e.g. 90 for 90%) to estimate the CSTV.
 #' The target needs to be < plateau, otherwise, target = plateau.
-#' @param tidy logical operator (TRUE/FALSE) to decide the type of return. TRUE returns a data.frame, FALSE returns a list (default).
+#' @param tidy logical operator (TRUE/FALSE) to decide the type of return. TRUE returns a tidy data frame or tibble (default), FALSE returns a list.
 #' @param resid logical operator (TRUE/FALSE) to plot residuals analysis, Default: FALSE
 #' @param plot logical operator (TRUE/FALSE) to plot the linear-plateau model, Default: FALSE
-#' @param x selfstart vector for independent variable, Default: NULL
-#' @param intercept selfstart arg. for intercept Default: NULL
-#' @param slope selfstart arg. for slope Default: NULL
-#' @param cx selfstart arg. for critical X (cx) value Default: NULL
+#' @param x selfstart arg. for explanatory variable in SSlinp Default: NULL
+#' @param a selfstart arg. for intercept Default: NULL
+#' @param b selfstart arg. for slope Default: NULL
+#' @param xs selfstart arg. for break/join point in SSlinp Default: NULL
+#' @param n sample size for the bootstrapping Default: 500
+#' @param ... when running bootstrapped samples, the `...` (open arguments) allows to add grouping variable/s (factor or character) Default: NULL
 #' @rdname linear_plateau
 #' @return returns an object of type `ggplot` if plot = TRUE.
 #' @return returns a residuals plot if resid = TRUE.
@@ -38,6 +40,7 @@
 #' @seealso 
 #'  \code{\link[rlang]{eval_tidy}},\code{\link[rlang]{defusing-advanced}}
 #'  \code{\link[minpack.lm]{nlsLM}}
+#'  \code{\link[nlraa]{SSlinp}}
 #'  \code{\link[stats]{AIC}},\code{\link[stats]{lm}},\code{\link[stats]{optim}},\code{\link[stats]{coef}},\code{\link[stats]{predict}}
 #'  \code{\link[AICcmodavg]{AICc}}
 #'  \code{\link[modelr]{model-quality}}
@@ -46,117 +49,30 @@
 #'  \code{\link[ggplot2]{ggplot}},\code{\link[ggplot2]{aes}},\code{\link[ggplot2]{geom_rug}},\code{\link[ggplot2]{geom_point}},\code{\link[ggplot2]{geom_abline}},\code{\link[ggplot2]{geom_path}},\code{\link[ggplot2]{annotate}},\code{\link[ggplot2]{labs}},\code{\link[ggplot2]{theme}}
 #'  \code{\link[ggpp]{annotate}}
 #' @note For extended reference, we recommend to visit: 
-#' https://gradcylinder.org/linear-plateau/ & https://github.com/austinwpearce/SoilTestCocaCola by Austin Pearce.
+#' https://gradcylinder.org/post/linear-plateau/ by Austin Pearce.
 #' Self-start function code adapted from nlraa package by F. Miguez <https://github.com/femiguez/nlraa>
 #' @export
-#' @importFrom rlang eval_tidy quo
+#' @importFrom rlang eval_tidy quo enquo
+#' @importFrom nlraa SSlinp
 #' @importFrom minpack.lm nlsLM
-#' @importFrom stats sortedXyData AIC lm optim coef predict
 #' @importFrom AICcmodavg AICc
-#' @importFrom modelr rsquare
+#' @importFrom modelr rsquare rmse
 #' @importFrom nlstools nlsResiduals confint2
-#' @importFrom dplyr bind_cols %>%
+#' @importFrom dplyr bind_cols mutate select slice_sample group_by tibble as_tibble ungroup
 #' @importFrom ggplot2 ggplot aes geom_rug geom_point geom_vline geom_hline geom_path annotate scale_y_continuous labs theme_bw theme unit rel element_blank element_text
-#' @importFrom stats lm AIC optim coef predict
+#' @importFrom stats lm AIC optim coef predict anova BIC
+#' @importFrom tidyr nest unnest expand_grid
+#' @importFrom purrr map possibly
 #' 
 NULL
 
 
-LP_init <- function(mCall, LHS, data, ...){
-  
-  ### STAGE 1 ====================================================================
-  # Self start functions (adapted from nlraa package by Fernando Miguez)
-  # Original source: https://github.com/femiguez/nlraa
-  # Define the linear-plateau function (LP_f) 
-  
-  # Initialize function
-  
-  xy <- stats::sortedXyData(mCall[["x"]], LHS, data)
-  if(nrow(xy) < 4){
-    stop("Too few distinct input values to fit a linear-plateau model")
-  }
-  
-  # Start with a guess from simple lm to half the data
-  xy1 <- xy[1:floor(nrow(xy)/2),]
-  fit1 <- stats::lm(xy1[,"y"] ~ xy1[,"x"])
-  
-  ## Optimization of starting values
-  objfun <- function(cfs){
-    pred <- LP_f(xy[,"x"], intercept=cfs[1], slope=cfs[2], cx=cfs[3])
-    ans <- sum((xy[,"y"] - pred)^2)
-    ans
-  }
-  # optimization
-  cfs <- c(coef(fit1),mean(xy[,"x"]))
-  op <- try(stats::optim(cfs, objfun, method = "L-BFGS-B",
-                         upper = c(Inf, Inf, max(xy[,"x"])),
-                         lower = c(-Inf, -Inf, min(xy[,"x"]))), silent = TRUE)
-  # use inherits() instead of comparing class to string
-  if (inherits(op, "try-error") ){
-    ## If it fails we use the mean for the CSTV (cx)
-    ## and initial values guess by fiting a lm() to half the data
-    
-    intercept <- stats::coef(fit1)[1]
-    slope <- stats::coef(fit1)[2]
-    cx <- mean(xy[,"x"])
-  } else {
-    intercept <- op$par[1]
-    slope <- op$par[2]
-    cx <- op$par[3]
-  }
-  
-  # if(class(op) != "try-error"){
-  #   intercept <- op$par[1]
-  #   slope <- op$par[2]
-  #   cx <- op$par[3]
-  # } else {
-  #   ## If it fails we use the mean for the CSTV (cx)
-  #   ## and initial values guess by fiting a lm() to half the data
-  #   
-  #   intercept <- stats::coef(fit1)[1]
-  #   slope <- stats::coef(fit1)[2]
-  #   cx <- mean(xy[,"x"])
-  # }
-  
-  value <- c(intercept, slope, cx)
-  names(value) <- mCall[c("intercept","slope","cx")]
-  value
-}
 
 #' @rdname linear_plateau
-#' @return LP_f: vector of the same length as x using the linear-plateau function
-#' @export
-#' 
-LP_f <- function(x, intercept, slope, cx){
-  
-  .asym <- intercept + slope * cx
-  .value <- (x < cx) * (intercept + slope * x) + (x >= cx) * .asym
-  
-  ## Derivative with respect to a when (x < cx)
-  .exp1 <- 1 ## ifelse(x < cx, 1, 1)
-  ## Derivative with respect to slope
-  .exp2 <- ifelse(x < cx, x, cx)
-  ## Derivative with respect to cx
-  .exp3 <- ifelse(x < cx, 0, slope)
-  
-  .actualArgs <- as.list(match.call()[c("intercept","slope","cx")])
-  
-  ##  Gradient
-  if (all(unlist(lapply(.actualArgs, is.name)))) {
-    .grad <- array(0, c(length(.value), 3L), list(NULL, c("intercept","slope","cx")))
-    .grad[, "intercept"] <- .exp1
-    .grad[, "slope"] <- .exp2
-    .grad[, "cx"] <- .exp3
-    dimnames(.grad) <- list(NULL, .actualArgs)
-    attr(.value, "gradient") <- .grad
-  }
-  .value
-}
-
-#' @rdname linear_plateau
-#' @return SS_LP: selfStart object to pass into the linear_plateau fit
+#' @return SS_LP: selfStart function to pass into the linear_plateau fit
 #' @export 
-SS_LP <- stats::selfStart(LP_f, initial = LP_init, c("intercept","slope","cx"))
+SS_LP <- nlraa::SSlinp
+
 
 #' @rdname linear_plateau
 #' @return linear_plateau: function
@@ -165,7 +81,7 @@ linear_plateau <- function(data = NULL,
                            stv,
                            ry,
                            target = NULL,
-                           tidy = FALSE,
+                           tidy = TRUE,
                            plot = FALSE,
                            resid = FALSE) {
   
@@ -197,9 +113,9 @@ linear_plateau <- function(data = NULL,
   miny <- min(test.data$y)
   maxy <- max(test.data$y)
   
-  # Run the model combining minpack.lm::nlsLM + defined selfStart (SS_LP)
+  # Run the model combining minpack.lm::nlsLM + selfStart LP)
   lp_model <-
-    try(minpack.lm::nlsLM(y ~ SS_LP(x, b0, b1, CSTV), data = test.data))
+    try(minpack.lm::nlsLM(y ~ SS_LP(x, a, b, jp), data = test.data))
   
   if (inherits(lp_model, "try-error")) {
     stop("Linear-plateau model did not converge. Please, consider other models.")
@@ -207,51 +123,65 @@ linear_plateau <- function(data = NULL,
     lp_model <- lp_model
   }
   
+  # Get p-value of model vs. null, Pr(>F)
+  null_model <- stats::lm(y ~ 1, data = test.data)
+  pvalue <- round(stats::anova(lp_model, null_model)[,"Pr(>F)"][[2]], 4)
+  # if (pvalue >= 0.001) {pvalue <- round(pvalue, 3)} else{pvalue <- "<0.001"}
   # Find AIC and pseudo R-squared
   # AIC 
   # It makes sense because it's a sort of "simulation" (using training data) to 
   # test what would happen with out of sample data
-  AIC <- round(stats::AIC(lp_model), 0)
-  AICc <- round(AICcmodavg::AICc(lp_model), 0)
+  
+  AIC <- round(stats::AIC(lp_model), 2)
+  AICc <- round(AICcmodavg::AICc(lp_model), 2)
+  BIC <- round(stats::BIC(lp_model), 2)
   # R2
   R2 <- round(modelr::rsquare(lp_model, test.data), 2)
+  # RMSE
+  RMSE <- round(modelr::rmse(lp_model, test.data), 2)
+  
   
   # get model coefficients
-  b0 <- stats::coef(lp_model)[[1]]
-  b1 <- stats::coef(lp_model)[[2]]
+  a <- stats::coef(lp_model)[[1]]
+  b <- stats::coef(lp_model)[[2]]
+  jp <- stats::coef(lp_model)[[3]]
+  plateau <- a + b * jp
   
-  # CSTV for plateau or for target
-  if (!is.null(target)) { 
-  if (target >= stats::coef(lp_model)[[3]]) {
-  warning("You have specified a relative yield target equal or greater than the CSTV for plateau. 
-          The CSTV estimations have been changed for the plateau level", 
-                                    call. = FALSE) 
+  
+  # CSTV rounded for plot display only (don't round for bootstraps)
+  CSTV <- jp
+  CSTVr <- ifelse(jp > 10, round(jp), round(jp, 1))
+  
+  # Wald confidence interval for CSTV
+  # not as reliable as bootstrapping but sometimes useful
+  lp_model.confint <- nlstools::confint2(lp_model, level = 0.95)
+  lowerCL <- lp_model.confint[[3,1]]
+  upperCL <- lp_model.confint[[3,2]]
+  
+  # STVt remains at join point (jp) if > plateau
+  if (!is.null(target)){
+    if (target > plateau) {
+    warning("You have specified a relative yield target > plateau. The STVt therefore remains at the join point at the plateau level", 
+          call. = FALSE) 
+    }
   }
-  }
   
-  # confidence interval for CSTV
-  lp_model.confint <- nlstools::confint2(lp_model)
-  CSTV_lower <- lp_model.confint[[3,1]]
-  CSTV_upper <- lp_model.confint[[3,2]]
-  plateau <- b0 + b1 * stats::coef(lp_model)[[3]]
-  
-  # CSTV
-  CSTV <- round(stats::coef(lp_model)[[3]], 1)
+  # STVt is not the same as CSTV unless at join point
+  # CI for STVt require bootstrapping 
   STVt <- ifelse(is.null(target), 
-                 round(stats::coef(lp_model)[[3]], 1),
+                 CSTV,
                  ifelse(target >= plateau,
-                        (plateau - b0) / b1,
-                        (target - b0) / b1) )
+                        (plateau - a) / b,
+                        (target - a) / b))
   
   
-  # have to make a line because the SS_LP doesn't plot right
-  lp_line <- data.frame(x = seq(minx, maxx, by = maxx/200)) %>%
-    dplyr::mutate(y = ifelse(x < stats::coef(lp_model)[[3]], 
-                             b0 + b1 * x,
-                             b0 + b1 * stats::coef(lp_model)[[3]] ) )
+  # have to make a line because seq() doesn't plot clean break point
+  lp_line <- dplyr::tibble(
+    x = c(minx, jp, maxx),
+    y = c(a + b * minx, plateau, plateau))
   
-  equation <- paste0(round(b0, 1), " + ",
-                     round(b1, 2), "x if x<CSTV")
+  equation <- paste0(round(a, 1), " + ",
+                     round(b, 2), "x when x < ", CSTVr)
   
   ## STAGE 3 ====================================================================
   ## Outputs
@@ -261,30 +191,38 @@ linear_plateau <- function(data = NULL,
       if (resid == TRUE)
         plot(nlstools::nlsResiduals(lp_model), which = 0)
     }
-    results <- data.frame(
-      intercept = round(b0, 2),
-      slope = round(b1, 2),
+    
+    results <- dplyr::tibble(
+      intercept = a,
+      slope = b,
       equation,
-      plateau = round(plateau, 1),
+      plateau,
+      CSTV,
+      lowerCL = round(lowerCL, 1),
+      upperCL = round(upperCL, 1),
+      CI_type = "Wald, 95%",
       target = ifelse(!is.null(target),
                       target,
                       round(plateau, 1)),
-      CSTV = round(CSTV, 1),
-      LL_cstv = round(CSTV_lower,1),
-      UL_cstv = round(CSTV_upper,1),
-      CI_type = "Wald Conf. Interval",
-      STVt = round(STVt,1),
+      STVt = round(STVt, 1),
       AIC,
       AICc,
-      R2
+      BIC,
+      R2,
+      RMSE,
+      pvalue
       )
     
   # Decide type of output
-    if (tidy == TRUE) {results <- results}
+    if (tidy == TRUE) {
+      
+      return(dplyr::as_tibble(results))
     
-    if (tidy == FALSE) {results <- as.list(results)}
+    } else if (tidy == FALSE) {
     
-    return(results)
+      return(as.list(results))
+      
+    }
     
   } else {
     # Residual plots and normality
@@ -299,53 +237,81 @@ linear_plateau <- function(data = NULL,
       ggplot2::geom_rug(alpha = 0.2, length = ggplot2::unit(2, "pt")) +
       # Data points
       ggplot2::geom_point(shape = 21, size = 3, alpha = 0.75, fill = "#e09f3e") +
+      # LP Curve
+      ggplot2::geom_line(data = lp_line, ggplot2::aes(x, y),
+                         color = "grey15", linewidth = 1) +
       # CSTV for break point
       {if (is.null(target))
-        ggplot2::geom_vline(xintercept = CSTV, alpha = 1, color = "#13274F", 
-                            size = 0.5, linetype = "dashed") } +
+        ggplot2::geom_vline(xintercept = jp, alpha = 1, color = "#13274F", 
+                            linewidth = 0.5, linetype = "dashed") } +
       # annotation
       {if (is.null(target))
-        ggplot2::annotate("text",label = paste("CSTV =", round(CSTV,1), "ppm"),
-                          x = CSTV, y = 0, angle = 90, hjust = 0, vjust = 1.5, col = "grey25") } +
-      # CSTV for TARGET
+        ggplot2::annotate(
+          "text", label = paste("CSTV =", CSTVr, "ppm"),
+          x = jp, y = 0, angle = 90, hjust = 0, vjust = 1.5, color = "grey25") } +
+      # STV for TARGET
       {if (!is.null(target))
         ggplot2::geom_vline(xintercept = STVt, alpha = 1, color = "#13274F", 
-                            size = 0.5, linetype = "dashed") } +
+                            linewidth = 0.5, linetype = "dashed") } +
       # CSTV annotation
       {if (!is.null(target))
-        ggplot2::annotate("text",label = paste(ifelse(target < plateau, "STVt =", "CSTV ="), round(STVt,1),"ppm"),
-                          x = STVt, y = 0, angle = 90, hjust = 0, vjust = 1.5, col = "grey25") } +
+        ggplot2::annotate(
+          "text", label = paste(ifelse(target < plateau, "STVt =", "CSTV ="),
+                                round(STVt, 1),"ppm"),
+          x = STVt, y = 0, angle = 90, hjust = 0, vjust = 1.5, color = "grey25") } +
       # CI
       { if (is.null(target)) 
-        geom_vline(xintercept = CSTV_lower, col = "grey25", size = 0.25, linetype = "dotted") } +
-      { if (is.null(target))
-        geom_vline(xintercept = CSTV_upper, col = "grey25", size = 0.25, linetype = "dotted") } +
+        geom_vline(xintercept = c(lowerCL, upperCL),
+                   color = "grey25", linewidth = 0.25, linetype = "dotted") } +
       # Plateau
       { if(is.null(target))
         ggplot2::geom_hline(yintercept = plateau, alpha = 0.2) } +
+      
       { if(!is.null(target))
-        ggplot2::geom_hline(yintercept = ifelse(target < plateau, target, plateau), alpha = 0.2) } +
-      # LP Curve
-      ggplot2::geom_line(data = lp_line, ggplot2::aes(x=x,y=y), color="grey15", size = 1.5) +
+        ggplot2::geom_hline(
+          yintercept = ifelse(target < plateau, target, plateau), alpha = 0.2) } +
       # Text annotations
-      # Target = null
+      # Target = NULL = CSTV @ join point
       { if(is.null(target))
-          ggplot2::annotate("text",label = paste0("Plateau = ", round(plateau, 0), "%"),
-                            x = maxx, y = plateau, hjust = 1,vjust = 1.5, col = "grey25")  } +
+        ggplot2::annotate(
+          "text", label = paste0("Plateau = ", round(plateau, 0), "%"),
+          x = maxx, y = plateau, hjust = 1,vjust = 1.5, color = "grey25")  } +
       # Target if not null
       {  if(!is.null(target))
-          ggplot2::annotate("text",label = paste0(ifelse(target < plateau, "Target = ", "Plateau = "), round(ifelse(target < plateau, target, plateau), 0), "%"),
-                            x = maxx, y = ifelse(target < plateau, target, plateau), hjust = 1,vjust = 1.5, col = "grey25")     } +
+        ggplot2::annotate(
+          "text",label = paste0(
+            ifelse(target < plateau, "Target = ", "Plateau = "),
+            round(ifelse(target < plateau, target, plateau), 0), "%"),
+          x = maxx, y = ifelse(target < plateau, target, plateau),
+          hjust = 1,vjust = 1.5, color = "grey25")     } +
       
-      ggplot2::annotate("text", col = "grey25",
-                        label = paste0("y = ", equation, 
-                                       "\nn = ", nrow(test.data),
-                                       "\npseudo-R2 = ", R2,
-                                       "\nAICc = ", AICc,
-                                       "\nCI = [", round(CSTV_lower,1)," - ", round(CSTV_upper,1),"]"),
+      ggplot2::annotate("text", color = "grey25",
+                        label = paste0(
+                          "n = ", nrow(test.data),
+                          "\ny = ", equation, 
+                          "\npseudo-R2 = ", R2,
+                          "\nAICc = ", AICc,
+                          "\nCSTV CI = [", ifelse(is.null(target),
+                                             round(lowerCL,1),
+                                             NA)," - ",
+                          ifelse(is.null(target), round(upperCL,1), NA), "]"),
                         x = maxx, y = 0, vjust = 0, hjust = 1) +
-      ggplot2::scale_y_continuous(limits = c(0, maxy),breaks=seq(0,maxy*2,10)) +
-      ggplot2::labs(x = "Soil test value (units)", y = "Relative yield (%)",
+      # Giving more flexibility to x scale
+      ggplot2::scale_x_continuous(
+        breaks = seq(0, maxx,
+                     by = ifelse(maxx >= 300, 50,
+                           ifelse(maxx >= 200, 20,
+                            ifelse(maxx >= 100, 10, 
+                             ifelse(maxx >= 50, 5,
+                              ifelse(maxx >= 20, 2,
+                               ifelse(maxx >= 10, 1,
+                                ifelse(maxx >= 5, 0.5,
+                                 ifelse(maxx >= 1, 0.2, 
+                                        0.1))))))))) ) +
+      ggplot2::scale_y_continuous(limits = c(0, maxy),
+                                  breaks = seq(0, maxy * 2,10)) +
+      ggplot2::labs(x = "Soil test value (units)",
+                    y = "Relative yield (%)",
                     title = "Linear-plateau")+
       ggplot2::theme_bw()+
       ggplot2::theme(panel.grid = ggplot2::element_blank(),
@@ -354,3 +320,74 @@ linear_plateau <- function(data = NULL,
     return(lp_plot)
   }
 }
+
+
+
+#' @rdname linear_plateau
+#' @return boot_linear_plateau: bootstrapping function
+#' @export 
+
+boot_linear_plateau <-
+  function(data, stv, ry, n = 1000, target = NULL, ...) {
+    # Allow customized column names
+    x <- rlang::enquo(stv)
+    y <- rlang::enquo(ry)
+    
+    # Empty global variables
+    boot_id <- NULL
+    boots <- NULL
+    model <- NULL
+    equation <- NULL
+    CI_type <- NULL
+    lowerCL <- NULL
+
+    output_df <- data %>%
+      dplyr::select(!!y, !!x, ...) %>%
+      tidyr::expand_grid(boot_id = seq(1, n, by = 1)) %>%
+      dplyr::group_by(boot_id, ...) %>%
+      tidyr::nest(boots = c(!!x, !!y)) %>%
+      dplyr::mutate(boots = boots %>%
+                      purrr::map(function(boots)
+                        dplyr::slice_sample(boots,
+                                            replace = TRUE, n = nrow(boots)))) %>%
+      dplyr::mutate(
+        model = map(boots, purrr::possibly(
+          .f = ~ soiltestcorr::linear_plateau(
+            data = ., ry = !!y, stv = !!x, target = target)),
+          otherwise = NULL, quiet = TRUE)) %>%
+      dplyr::select(-boots) %>%
+      tidyr::unnest(cols = model) %>% 
+      # irrelevant columns
+      dplyr::select(-equation, -(lowerCL:CI_type)) %>% 
+      dplyr::ungroup()
+    
+    return(output_df)
+  }
+
+#Testing for potential future release
+# boot_linear_plateau2 <-
+#   function(data, stv, ry, n = 500, target = NULL, ....) {
+#     # Allow customized column names
+#     x <- rlang::enquo(stv)
+#     y <- rlang::enquo(ry)
+#     by <- rlang::enquo(.by)
+# 
+#     output_df <- data %>%
+#       #dplyr::select(!!x, !!y, ...) %>%
+#       dplyr::group_by(...) %>% 
+#       tidyr::nest() %>% 
+#       mutate(nested_boots = map(data, modelr::bootstrap, n = 5)) %>%
+#       unnest(nested_boots)
+#       mutate(boots = map(strap, dplyr::as_tibble),
+#              model = map(boots, purrr::possibly(
+#                .f = ~ soiltestcorr::linear_plateau(
+#                data = ., stv = !!x, ry = !!y, target = target),
+#              otherwise = NULL))) %>%
+#       dplyr::select(-(data:boots)) %>%
+#       tidyr::unnest(model) %>%
+#       dplyr::ungroup() %>%
+#       # irrelevant columns
+#       dplyr::select(-equation, -(lowerCL:CI_type))
+#       
+#     return(output_df)
+#   }

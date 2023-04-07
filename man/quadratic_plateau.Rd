@@ -2,32 +2,32 @@
 % Please edit documentation in R/quadratic_plateau.R
 \name{quadratic_plateau}
 \alias{quadratic_plateau}
-\alias{QP_f}
 \alias{SS_QP}
+\alias{boot_quadratic_plateau}
 \title{Quadratic-plateau response function}
 \usage{
-QP_f(x, intercept, slope, Xc)
-
-SS_QP(x, intercept, slope, Xc)
+SS_QP(x, a, b, xs)
 
 quadratic_plateau(
   data = NULL,
   stv,
   ry,
   target = NULL,
-  tidy = FALSE,
+  tidy = TRUE,
   plot = FALSE,
   resid = FALSE
 )
+
+boot_quadratic_plateau(data, stv, ry, n = 1000, target = NULL, ...)
 }
 \arguments{
-\item{x}{selfstart vector for independent variable, Default: NULL}
+\item{x}{selfstart arg. for explanatory variable in SSquadp3xs Default: NULL}
 
-\item{intercept}{selfstart arg. for intercept Default: NULL}
+\item{a}{selfstart arg. for intercept Default: NULL}
 
-\item{slope}{selfstart arg. for slope Default: NULL}
+\item{b}{selfstart arg. for slope Default: NULL}
 
-\item{Xc}{selfstart arg. for critical value Default: NULL}
+\item{xs}{selfstart arg. for break/join point in SSquadp3xs Default: NULL}
 
 \item{data}{Optional argument to call and object of type data.frame or data.table
 containing the stv and ry data, Default: NULL}
@@ -39,11 +39,15 @@ containing the stv and ry data, Default: NULL}
 \item{target}{\code{numeric} value of relative yield target (e.g. 90 for 90\%) to estimate the CSTV.
 The target needs to be < plateau, otherwise, target = plateau.}
 
-\item{tidy}{logical operator (TRUE/FALSE) to decide the type of return. TRUE returns a data.frame, FALSE returns a list (default).}
+\item{tidy}{logical operator (TRUE/FALSE) to decide the type of return. TRUE returns a tidy data frame or tibble (default), FALSE returns a list.}
 
 \item{plot}{logical operator (TRUE/FALSE) to plot the quadratic-plateau model, Default: FALSE}
 
 \item{resid}{logical operator (TRUE/FALSE) to plot residuals analysis, Default: FALSE}
+
+\item{n}{sample size for the bootstrapping Default: 500}
+
+\item{...}{when running bootstrapped samples, the \code{...} (open arguments) allows to add grouping variable/s (factor or character) Default: NULL}
 }
 \value{
 returns an object of type \code{ggplot} if plot = TRUE.
@@ -54,11 +58,11 @@ returns an object of class \code{data.frame} if tidy = TRUE,
 
 returns an object of class \code{list} if tidy = FALSE.
 
-QP_f: vector of the same length as x using the quadratic-plateau function
-
-SS_QP: selfStart object to pass into the quadratic_plateau fit
+SS_QP: selfStart function to pass into the quadratic_plateau fit
 
 quadratic_plateau: function
+
+boot_quadratic_plateau: bootstrapping function
 }
 \description{
 This function helps to fit a quadratic-plateau response model and to
@@ -69,18 +73,17 @@ See \href{https://adriancorrendo.github.io/soiltestcorr/articles/quadratic_plate
 }
 \note{
 For extended reference, we recommend to visit
-\url{https://gradcylinder.org/quad-plateau/} & \url{https://github.com/austinwpearce/SoilTestCocaCola}
-by Austin Pearce.
+\url{https://gradcylinder.org/post/quad-plateau/} by Austin Pearce.
 Self-start function code adapted from nlraa package by F. Miguez \url{https://github.com/femiguez/nlraa}
 }
 \examples{
 \donttest{
 # Example dataset
- dat <- data.frame("ry" = c(65,80,85,88,90,94,93,96,97,95,98,100,99,99,100),
-                   "stv" = c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15))
+ df <- data.frame("ry" = c(65,80,85,88,90,94,93,96,97,95,98,100,99,99,100),
+                  "stv" = c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15))
  # Run
- fit_example_qp <- quadratic_plateau(data = dat, 
- ry = ry, stv = stv, resid = TRUE, plot = FALSE)
+ fit_example_qp <- quadratic_plateau(data = df, 
+ stv = stv, ry = ry, resid = TRUE, plot = FALSE)
  fit_example_qp
 }
 }
@@ -92,6 +95,7 @@ Quadratic and Quadratic-Plus-Plateau Models for Predicting Optimal Nitrogen Rate
 \seealso{
 \code{\link[rlang]{eval_tidy}},\code{\link[rlang]{defusing-advanced}}
 \code{\link[minpack.lm]{nlsLM}}
+\code{\link[nlraa]{SSlinp}}
 \code{\link[stats]{AIC}},\code{\link[stats]{lm}},\code{\link[stats]{optim}},\code{\link[stats]{coef}},\code{\link[stats]{predict}}
 \code{\link[AICcmodavg]{AICc}}
 \code{\link[modelr]{model-quality}}

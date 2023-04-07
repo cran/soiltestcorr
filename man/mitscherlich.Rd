@@ -5,6 +5,7 @@
 \alias{mits_formula_1}
 \alias{mits_formula_2}
 \alias{mits_formula_3}
+\alias{boot_mitscherlich}
 \title{Mitscherlich response function}
 \usage{
 mits_formula_1(x, a, b, c)
@@ -17,21 +18,23 @@ mitscherlich(
   data = NULL,
   stv,
   ry,
-  type,
-  target = NULL,
-  tidy = FALSE,
+  type = 1,
+  target = 95,
+  tidy = TRUE,
   plot = FALSE,
   resid = FALSE
 )
+
+boot_mitscherlich(data, stv, ry, type = 1, n = 999, target = 95, ...)
 }
 \arguments{
 \item{x}{selfstart vector. for model fit Default: NULL}
 
-\item{a}{selfstart arg. for asymptote, Default: NULL}
+\item{a}{selfstart arg. for asymptote parameter, Default: NULL}
 
-\item{b}{selfstart arg. for xintercept Default: NULL}
+\item{b}{selfstart arg. for b parameter (b = -X_intercept) Default: NULL}
 
-\item{c}{selfstart arg. for curvature Default: NULL}
+\item{c}{selfstart arg. for curvature parameter Default: NULL}
 
 \item{data}{Optional argument to call and object of type data.frame or data.table
 containing the stv and ry data, Default: NULL}
@@ -40,19 +43,23 @@ containing the stv and ry data, Default: NULL}
 
 \item{ry}{name of the vector containing relative yield values (\%) of type \code{numeric}.}
 
-\item{type}{string or number that indicates the type of Mitscherlich model to fit. Default: 1
-\code{type = "no restrictions"} or \code{type = 1} for model with 'no restrictions';
-\code{type = "asymptote 100"} or \code{type = 2} for model with 'asymptote = 100';
-\code{type = "asymptote 100 from 0"} or \code{type = 3} for model with 'asymptote = 100 and xintercept = 0'"}
+\item{type}{string or number that indicates the type of Mitscherlich model to fit. Default: 1.
+For model with 'no restrictions' use \code{type = 1}, \code{type = "no restriction"}, or \code{type = "free"};
+For model with 'asymptote = 100' use \code{type = 2}, \code{type = "asymptote 100"}, or \code{type = "100"};
+For model with 'asymptote = 100 and xintercept = 0'" \code{type = 3}, \code{type = "asymptote 100 from 0"}, or \code{type = "fixed"}.}
 
 \item{target}{\code{numeric} value of relative yield target (e.g. 90 for 90\%) to estimate the CSTV.
 Default: NULL}
 
-\item{tidy}{logical operator (TRUE/FALSE) to decide the type of return. TRUE returns a data.frame, FALSE returns a list (default).}
+\item{tidy}{logical operator (TRUE/FALSE) to decide the type of return. TRUE returns a tidy data frame or tibble (default), FALSE returns a list.}
 
 \item{plot}{logical operator (TRUE/FALSE) to plot the Mitscherlich model, Default: FALSE}
 
 \item{resid}{logical operator (TRUE/FALSE) to plot residuals analysis, Default: FALSE}
+
+\item{n}{sample size for the bootstrapping Default: 500}
+
+\item{...}{when running bootstrapped samples, the \code{...} (open arguments) allows to add grouping variable/s (factor or character) Default: NULL}
 }
 \value{
 returns an object of type \code{ggplot} if plot = TRUE.
@@ -70,10 +77,12 @@ Mitscherlich type 2 formula
 Mitscherlich type 3 formula
 
 mitscherlich: function
+
+boot_mitscherlich: bootstrapping function
 }
 \description{
-This function helps to fit a Mitscherlich response model for relative yield (ry)
-as a function of soil test values (stv).
+This function helps to fit a Mitscherlich-style exponential
+response model for relative yield (ry) as a function of soil test values (stv).
 }
 \details{
 See \href{https://adriancorrendo.github.io/soiltestcorr/articles/mitscherlich_tutorial.html}{online-documentation} for additional details.

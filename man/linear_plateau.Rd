@@ -2,32 +2,32 @@
 % Please edit documentation in R/linear_plateau.R
 \name{linear_plateau}
 \alias{linear_plateau}
-\alias{LP_f}
 \alias{SS_LP}
+\alias{boot_linear_plateau}
 \title{Linear-plateau response function}
 \usage{
-LP_f(x, intercept, slope, cx)
-
-SS_LP(x, intercept, slope, cx)
+SS_LP(x, a, b, xs)
 
 linear_plateau(
   data = NULL,
   stv,
   ry,
   target = NULL,
-  tidy = FALSE,
+  tidy = TRUE,
   plot = FALSE,
   resid = FALSE
 )
+
+boot_linear_plateau(data, stv, ry, n = 1000, target = NULL, ...)
 }
 \arguments{
-\item{x}{selfstart vector for independent variable, Default: NULL}
+\item{x}{selfstart arg. for explanatory variable in SSlinp Default: NULL}
 
-\item{intercept}{selfstart arg. for intercept Default: NULL}
+\item{a}{selfstart arg. for intercept Default: NULL}
 
-\item{slope}{selfstart arg. for slope Default: NULL}
+\item{b}{selfstart arg. for slope Default: NULL}
 
-\item{cx}{selfstart arg. for critical X (cx) value Default: NULL}
+\item{xs}{selfstart arg. for break/join point in SSlinp Default: NULL}
 
 \item{data}{Optional argument to call and object of type data.frame or data.table
 containing the soil test value (STV) and relative yield (RY) data, Default: NULL}
@@ -39,11 +39,15 @@ containing the soil test value (STV) and relative yield (RY) data, Default: NULL
 \item{target}{\code{numeric} value of relative yield target (e.g. 90 for 90\%) to estimate the CSTV.
 The target needs to be < plateau, otherwise, target = plateau.}
 
-\item{tidy}{logical operator (TRUE/FALSE) to decide the type of return. TRUE returns a data.frame, FALSE returns a list (default).}
+\item{tidy}{logical operator (TRUE/FALSE) to decide the type of return. TRUE returns a tidy data frame or tibble (default), FALSE returns a list.}
 
 \item{plot}{logical operator (TRUE/FALSE) to plot the linear-plateau model, Default: FALSE}
 
 \item{resid}{logical operator (TRUE/FALSE) to plot residuals analysis, Default: FALSE}
+
+\item{n}{sample size for the bootstrapping Default: 500}
+
+\item{...}{when running bootstrapped samples, the \code{...} (open arguments) allows to add grouping variable/s (factor or character) Default: NULL}
 }
 \value{
 returns an object of type \code{ggplot} if plot = TRUE.
@@ -54,11 +58,11 @@ returns an object of class \code{data.frame} if tidy = TRUE,
 
 returns an object of class \code{list} if tidy = FALSE.
 
-LP_f: vector of the same length as x using the linear-plateau function
-
-SS_LP: selfStart object to pass into the linear_plateau fit
+SS_LP: selfStart function to pass into the linear_plateau fit
 
 linear_plateau: function
+
+boot_linear_plateau: bootstrapping function
 }
 \description{
 This function helps to fit a linear-plateau model in order to
@@ -69,7 +73,7 @@ See \href{https://adriancorrendo.github.io/soiltestcorr/articles/linear_plateau_
 }
 \note{
 For extended reference, we recommend to visit:
-https://gradcylinder.org/linear-plateau/ & https://github.com/austinwpearce/SoilTestCocaCola by Austin Pearce.
+https://gradcylinder.org/post/linear-plateau/ by Austin Pearce.
 Self-start function code adapted from nlraa package by F. Miguez \url{https://github.com/femiguez/nlraa}
 }
 \examples{
@@ -91,6 +95,7 @@ A Family of Models Involving Intersecting Straight Lines and Concomitant Experim
 \seealso{
 \code{\link[rlang]{eval_tidy}},\code{\link[rlang]{defusing-advanced}}
 \code{\link[minpack.lm]{nlsLM}}
+\code{\link[nlraa]{SSlinp}}
 \code{\link[stats]{AIC}},\code{\link[stats]{lm}},\code{\link[stats]{optim}},\code{\link[stats]{coef}},\code{\link[stats]{predict}}
 \code{\link[AICcmodavg]{AICc}}
 \code{\link[modelr]{model-quality}}

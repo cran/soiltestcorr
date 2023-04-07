@@ -14,202 +14,103 @@ library(soiltestcorr)
 library(ggplot2) # Plots
 library(dplyr) # Data wrangling
 library(tidyr) # Data wrangling
-library(utils) # Data wrangling
-library(data.table) # Mapping
 library(purrr) # Mapping
 
 
 ## -----------------------------------------------------------------------------
+# Native fake dataset from soiltestcorr package
+corr_df <- soiltestcorr::data_test
 
-# Example 1 dataset
-# Fake dataset manually created
+## ----warning=TRUE, message=TRUE-----------------------------------------------
+
+# Type = 1, no restriction (3 parameters)
+mitscherlich(corr_df, STV, RY, type = 1)
+# Type = 2, fixed asymptote value at 100 (2 parameters)
+mitscherlich(corr_df, STV, RY, type = 2)
+# Type = 3, fixed origin at 0 and asymptote at 100 (1 parameters)
+mitscherlich(corr_df, STV, RY, type = 3)
+
+
+## ----warning=TRUE, message=TRUE-----------------------------------------------
+
+# Using dataframe argument, tidy = FALSE -> return a LIST
+mitscherlich(data = corr_df, STV, RY, target = 90,  tidy = FALSE)
+
+## ----warning=TRUE, message=TRUE-----------------------------------------------
+
+fit_vectors_list <-mitscherlich(stv = corr_df$STV,
+                                ry = corr_df$RY,
+                                tidy = FALSE)
+
+fit_vectors_tidy <-mitscherlich(stv = corr_df$STV,
+                                ry = corr_df$RY,
+                                tidy = TRUE)
+
+## ----warning=T, message=F-----------------------------------------------------
+# Example 1. Fake dataset manually created
 data_1 <- data.frame("RY"  = c(65,80,85,88,90,94,93,96,97,95,98,100,99,99,100),
                      "STV" = c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15))
   
 # Example 2. Native fake dataset from soiltestcorr package
-
 data_2 <- soiltestcorr::data_test
 
 
 # Example 3. Native dataset from soiltestcorr package, Freitas et al.  (1966), used by Cate & Nelson (1971)
-data_3 <- soiltestcorr::freitas1966
+data_3 <- soiltestcorr::freitas1966 %>% 
+  rename(STV = STK)
 
-
-
-## ----warning=TRUE, message=TRUE-----------------------------------------------
-
-fit_1_type_1 <- 
-  soiltestcorr::mitscherlich(data = data_1, 
-                             ry = RY, 
-                             stv = STV, 
-                             type = 1, 
-                             target = 90)
-
-utils::head(fit_1_type_1)
-
-
-## ----warning=TRUE, message=TRUE-----------------------------------------------
-
-fit_1_type_2 <- 
-  soiltestcorr::mitscherlich(data = data_1, 
-                             ry = RY, 
-                             stv = STV, 
-                             type = 2, 
-                             target = 90)
-
-utils::head(fit_1_type_2)
-
-
-## ----warning=TRUE, message=TRUE-----------------------------------------------
-
-fit_1_type_3 <- 
-  soiltestcorr::mitscherlich(data = data_1, 
-                             ry = RY, 
-                             stv = STV, 
-                             type = 3, 
-                             target = 90)
-
-utils::head(fit_1_type_3)
-
-
-## ----warning=TRUE, message=TRUE-----------------------------------------------
-
-# Using dataframe argument, tidy = FALSE -> return a LIST
-fit_1_tidy_false <- 
-  soiltestcorr::mitscherlich(data = data_1, 
-                               ry = RY, 
-                               stv = STV, type = 1, target = 90, 
-                               tidy = FALSE)
-
-utils::head(fit_1_tidy_false)
-
-
-## ----warning=TRUE, message=TRUE-----------------------------------------------
-
-# Using dataframe argument, tidy = FALSE -> return a LIST
-fit_1_tidy_true <- 
-  soiltestcorr::mitscherlich(data = data_1, 
-                               ry = RY, 
-                               stv = STV, type = 1, target = 90,
-                               tidy = TRUE)
-
-fit_1_tidy_true
-
-
-## ----warning=TRUE, message=TRUE-----------------------------------------------
-
-fit_1_vectors_list <-
-  soiltestcorr::mitscherlich(ry = data_1$RY,
-                             stv = data_1$STV,
-                             type = 1,
-                             tidy = FALSE)
-
-fit_1_vectors_tidy <- 
-  soiltestcorr::mitscherlich(ry = data_1$RY,
-                             stv = data_1$STV,
-                             type = 1,
-                             tidy = TRUE)
-
-
-## ----warning=TRUE, message=TRUE-----------------------------------------------
-
-fit_2 <-
-  soiltestcorr::mitscherlich(data = data_2, 
-                             ry = RY,
-                             stv = STV,
-                             type = 1,
-                             target = 90)
-
-utils::head(fit_2)
-
-## ----warning=TRUE, message=TRUE-----------------------------------------------
-
-fit_3 <-
-  soiltestcorr::mitscherlich(data = data_3, 
-                             ry = RY,
-                             stv = STK, 
-                             type = 1, 
-                             target = 90)
-utils::head(fit_3)
-
-
-## ----warning=T, message=F-----------------------------------------------------
-# 
-data.all <- dplyr::bind_rows(data_1, data_2,
-                      data_3 %>% dplyr::rename(STV = STK),
-                     .id = "id") %>% 
-  tidyr::nest(data = c("STV", "RY"))
+data.all <- bind_rows(data_1, data_2, data_3, .id = "id")
 
 ## ----warning=T, message=F-----------------------------------------------------
 
 # Run multiple examples at once with map()
-fit_multiple_map <-
-  data.all %>%
-  dplyr::mutate(models = purrr::map(data, 
-                                     ~ soiltestcorr::mitscherlich(ry = .$RY,
-                                                                  stv = .$STV,
-                                                                  type = 1,
-                                                                  target = 90,
-                                                                  tidy = TRUE)))
-
-utils::head(fit_multiple_map)
-
-unnest(fit_multiple_map, models)
-
+data.all %>%
+  nest(data = c("STV", "RY")) %>% 
+  mutate(model = map(data, ~ mitscherlich(stv = .$STV, ry = .$RY))) %>%
+  unnest(model)
 
 ## ----warning=T, message=F-----------------------------------------------------
 
-fit_multiple_group_map <- 
-  dplyr::bind_rows(data_1, data_2, .id = "id") %>% 
-  dplyr::group_by(id) %>% 
-  dplyr::group_map(~ soiltestcorr::mitscherlich(data = ., 
-                                           ry = RY,
-                                           stv = STV, type = 1, target = 90,
-                                           tidy = TRUE))
-
-utils::head(fit_multiple_group_map)
+data.all %>% 
+  group_by(id) %>% 
+  group_modify(~ soiltestcorr::mitscherlich(data = ., STV, RY))
 
 
-## ----warning=F, message=F-----------------------------------------------------
+## -----------------------------------------------------------------------------
+set.seed(123)
+boot_mits <- boot_mitscherlich(corr_df, STV, RY, target = 90, n = 200)
 
-mitscherlich_plot <- 
-  soiltestcorr::mitscherlich(data = data_3, 
-                               ry = RY, 
-                               stv = STK, type = 1, target = 90, 
-                               plot = TRUE)
+boot_mits %>% head(n = 5)
 
-mitscherlich_plot
+# CSTV Confidence Interval
+quantile(boot_mits$CSTV, probs = c(0.025, 0.5, 0.975), na.rm = TRUE)
+
+# Plot
+boot_mits %>% 
+  ggplot2::ggplot(aes(x = CSTV))+
+  geom_histogram(color = "grey25", fill = "#9de0bf", bins = 10)
 
 ## ----warning=F, message=F-----------------------------------------------------
-mitscherlich_plot_2 <- 
-  mitscherlich_plot +
-  labs(
-    # Main title
-    title = "My own plot title",
-    # Axis titles
-    x = "Soil Test K (ppm)",
-    y = "Cotton RY(%)")
+data_3 <- soiltestcorr::freitas1966
 
-mitscherlich_plot_2
+plot_mit <- mitscherlich(data_3, STK, RY, plot = TRUE)
+
+plot_mit
 
 ## ----warning=F, message=F-----------------------------------------------------
-mitscherlich_plot_3 <-
-mitscherlich_plot_2 +
+plot_mit +
+  # Main title
+  ggtitle("My own plot title")+
+  # Axis titles
+  labs(x = "Soil Test K (ppm)",
+       y = "Cotton RY(%)") +
   # Axis scales
-  scale_x_continuous(breaks = seq(0,220, by = 20))+
-  # Axis limits
-  scale_y_continuous(breaks = seq(0,100, by = 10))
-
-mitscherlich_plot_3
-  
+  scale_x_continuous(limits = c(20,220),
+                     breaks = seq(0,220, by = 10))
 
 ## ----warning=F, message=F-----------------------------------------------------
 
 # Residuals plot
-
-soiltestcorr::mitscherlich(data = data_3, 
-                               ry = RY, 
-                               stv = STK, type = 1, target = 90, 
-                               resid = TRUE)
+mitscherlich(data_3, STK, RY, resid = TRUE)
 
 

@@ -3,14 +3,14 @@ title: "Introduction"
 author: Adrian Correndo & Austin Pearce 
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Introduction}
+  %\VignetteIndexEntry{a01}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
-  collapse = TRUE,
+  # collapse = TRUE,
   comment = "#>",
   fig.width=6, 
   fig.height=4
@@ -19,7 +19,7 @@ knitr::opts_chunk$set(
 
 <img src="../man/figures/soiltestcorr_logo.png" align="right" height="200" style="float:right; height:200px;">
 
-The `soiltestcorr` package is a collection of functions intended to contribute to reproducible correlation analysis between crop relative yield (RY) and soil test values (STV). The package development stemmed from ongoing work with the Fertilizer Recommendation Support Tool ([FRST](http://www.soiltestfrst.org/)) and the Feed the Future Innovation Lab for Collaborative Research on Sustainable Intensification ([SIIL](https://digitalconsortium.wixsite.com/dgfsc)) projects. <br/> 
+The `soiltestcorr` package is a collection of functions intended to contribute to reproducible correlation analysis between crop relative yield (RY) and soil test values (STV). The package development stemmed from ongoing work with the Fertilizer Recommendation Support Tool ([FRST](https://soiltestfrst.org/)) and the Feed the Future Innovation Lab for Collaborative Research on Sustainable Intensification ([SIIL](https://www.siildigitalagconsortium.com/)) projects. <br/> 
 
 This tutorial will introduce and demonstrate the currently available functions. <br/>
 
@@ -65,3 +65,11 @@ library(purrr) # Mapping
 
 ### 2.6. [Mitscherlich](https://adriancorrendo.github.io/soiltestcorr/articles/mitscherlich_tutorial.html) <br/>
 
+
+## 3. Publication in `SoftwareX Journal`: <br/>
+
+[https://doi.org/10.1016/j.softx.2022.101275](https://doi.org/10.1016/j.softx.2022.101275) <br/>
+
+## 4. Shinyapp: <br/>
+
+[https://ciampittilab.shinyapps.io/soiltestcorr/](https://ciampittilab.shinyapps.io/soiltestcorr/) <br/>

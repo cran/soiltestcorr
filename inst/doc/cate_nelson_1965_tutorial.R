@@ -15,7 +15,6 @@ library(ggplot2) # Plots
 library(dplyr) # Data wrangling
 library(tidyr) # Data wrangling
 library(utils) # Data wrangling
-library(data.table) # Mapping
 library(purrr) # Mapping
 
 
@@ -132,6 +131,22 @@ fit_multiple_group_map <-
                                      tidy = TRUE))
 
 utils::head(fit_multiple_group_map)
+
+
+## -----------------------------------------------------------------------------
+boot_cn65 <- boot_cn_1965(data = data_3,
+                          ry = RY, stv = STK, target = 90,
+                          n = 99)
+
+boot_cn65 %>% dplyr::slice_head(., n=5)
+
+# CSTV Confidence Interval
+quantile(boot_cn65$CSTV, probs = c(0.025, 0.5, 0.975))
+
+# Plot
+boot_cn65 %>% 
+  ggplot2::ggplot(aes(x = CSTV))+
+  geom_histogram(color = "grey25", fill = "#9de0bf", bins = 10)
 
 
 ## ----warning=F, message=F-----------------------------------------------------

@@ -17,7 +17,7 @@ downloads](https://cranlogs.r-pkg.org/badges/last-month/soiltestcorr?color=blue)
 status](https://ci.appveyor.com/api/projects/status/github/adriancorrendo/soiltestcorr?branch=main&svg=true)](https://ci.appveyor.com/project/adriancorrendo/soiltestcorr)
 [![R-CMD-check](https://github.com/adriancorrendo/soiltestcorr/workflows/R-CMD-check/badge.svg)](https://github.com/adriancorrendo/soiltestcorr/actions)
 [![codecov](https://codecov.io/gh/adriancorrendo/soiltestcorr/branch/main/graph/badge.svg?token=OUH9NBPBXI)](https://app.codecov.io/gh/adriancorrendo/soiltestcorr)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6539519.svg)](https://doi.org/10.5281/zenodo.6539519)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6636721.svg)](https://doi.org/10.5281/zenodo.6636721)
 
 <!-- badges: end -->
 
@@ -40,33 +40,33 @@ devtools::install_github("adriancorrendo/soiltestcorr")
 
 ## For more details, visit the Vignettes <br/>
 
-[1.
-Intro](https://adriancorrendo.github.io/soiltestcorr/articles/Introduction_to_soiltestcorr.html)
+[1. Intro](https://adriancorrendo.github.io/soiltestcorr/articles/Introduction_to_soiltestcorr.html)
 <br/>
 
-[2. Modified Arcsine-Log Calibration
-Curve](https://adriancorrendo.github.io/soiltestcorr/articles/mod_alcc_tutorial.html)
+[2. Modified Arcsine-Log Calibration Curve](https://adriancorrendo.github.io/soiltestcorr/articles/mod_alcc_tutorial.html)
 <br/>
 
-[3. Cate & Nelson
-(1965)](https://adriancorrendo.github.io/soiltestcorr/articles/cate_nelson_1965_tutorial.html)
+[3. Cate & Nelson (1965)](https://adriancorrendo.github.io/soiltestcorr/articles/cate_nelson_1965_tutorial.html)
 <br/>
 
-[4. Cate & Nelson
-(1971)](https://adriancorrendo.github.io/soiltestcorr/articles/cate_nelson_1971_tutorial.html)
+[4. Cate & Nelson (1971)](https://adriancorrendo.github.io/soiltestcorr/articles/cate_nelson_1971_tutorial.html)
 <br/>
 
-[5.
-Linear-plateau](https://adriancorrendo.github.io/soiltestcorr/articles/linear_plateau_tutorial.html)
+[5. Linear-plateau](https://adriancorrendo.github.io/soiltestcorr/articles/linear_plateau_tutorial.html)
 <br/>
 
-[6.
-Quadratic-plateau](https://adriancorrendo.github.io/soiltestcorr/articles/quadratic_plateau_tutorial.html)
+[6. Quadratic-plateau](https://adriancorrendo.github.io/soiltestcorr/articles/quadratic_plateau_tutorial.html)
 <br/>
 
-[7.
-Mitscherlich](https://adriancorrendo.github.io/soiltestcorr/articles/mitscherlich_tutorial.html)
+[7. Mitscherlich](https://adriancorrendo.github.io/soiltestcorr/articles/mitscherlich_tutorial.html)
 <br/>
+
+[8. ShinyApp](https://adriancorrendo.github.io/soiltestcorr/articles/Shinyapp.html) <br/>
+
+[9. SoftwareX publication](https://adriancorrendo.github.io/soiltestcorr/articles/SoftwareX_publication.html) <br/>
+
+[10. Bootstrapping](https://adriancorrendo.github.io/soiltestcorr/articles/bootstrapping_tutorial.html) <br/>
+
 
 # Description <br/>
 
@@ -74,8 +74,8 @@ The goal of `soiltestcorr` is to assist users on reproducible analysis
 of relationships between crop relative yield (ry) and soil test values
 (stv) following different approaches. <br/>
 
-The available methods of correlation analysis in `soiltestcorr` are:
-<br/>
+The current available methods of correlation analysis in `soiltestcorr`
+are: <br/>
 
 ## 1. Modified Arcsine-Log Calibration Curve <br/>
 
@@ -90,7 +90,7 @@ yield (ry) with confidence intervals at adjustable confidence levels.
 
 Instructions <br/>
 
-1.  Load your data.frame with soil test value (stv) and relative yield
+1.  Load your data frame with soil test value (stv) and relative yield
     (ry) data. <br/>
 
 2.  Specify the following arguments into the function -mod_alcc()-:
@@ -108,9 +108,9 @@ for the estimation of critical soil test value (CSTV) lower and upper
 limits. <br/>
 
 (e). `plot` TRUE (produces a ggplot as main output) or FALSE -default-
-(no plot, only results as list or data.frame), <br/>
+(no plot, only results as list or tibble), <br/>
 
-(f). `tidy` TRUE (produces a data.frame with results) or FALSE-default-
+(f). `tidy` TRUE -default- (produces a tibble with results) or FALSE
 (store results as list), <br/>
 
 3.  Run and check results. <br/>
@@ -155,7 +155,7 @@ version of the Cate-Nelson approach. <br/>
 
 Instructions <br/>
 
-1.  Load your data.frame with soil test value (stv) and relative yield
+1.  Load your data frame with soil test value (stv) and relative yield
     (ry) data. <br/>
 
 2.  Specify the following arguments into the function
@@ -167,9 +167,9 @@ Instructions <br/>
 vectors, <br/>
 
 (c). `plot` TRUE (produces a ggplot as main output) or FALSE (no plot,
-only results as list or data.frame), <br/>
+only results as list or tibble), <br/>
 
-(d). `tidy` TRUE (produces a data.frame with results) or FALSE (store
+(d). `tidy` TRUE-default- (produces a tibble with results) or FALSE (store
 results as list), <br/>
 
 3.  Run and check results. <br/>
@@ -195,7 +195,7 @@ the Cate-Nelson approach. <br/>
 
 Instructions <br/>
 
-1.  Load your data.frame with soil test value (stv) and relative yield
+1.  Load your data frame with soil test value (stv) and relative yield
     (ry) data. <br/>
 
 2.  Specify the following arguments into the function
@@ -206,10 +206,10 @@ Instructions <br/>
 (b). `stv` (soil test value) and `ry` (relative yield) columns or
 vectors, <br/>
 
-(c). `plot` TRUE (produces a ggplot as main output) or FALSE (no plot,
-only results as list or data.frame), <br/>
+(c). `plot` TRUE-default- (produces a ggplot as main output) or FALSE (no plot,
+only results as list or tibble), <br/>
 
-(d). `tidy` TRUE (produces a data.frame with results) or FALSE (store
+(d). `tidy` TRUE (produces a tibble with results) or FALSE (store
 results as list), <br/>
 
 3.  Run and check results. <br/>
@@ -238,7 +238,7 @@ model’s convergence. <br/>
 
 Instructions <br/>
 
-1.  Load your data.frame or vectors with soil test value (stv) and
+1.  Load your data frame or vectors with soil test value (stv) and
     relative yield (ry) data. <br/>
 
 2.  Specify the following arguments into the function
@@ -253,10 +253,13 @@ vectors, <br/>
 different \`ry\`\` than the plateau.
 
 (d). `plot` TRUE (produces a ggplot as main output) or FALSE (no plot,
-only results as data.frame), <br/>
+only results as tibble), <br/>
 
 (e). `resid` TRUE (produces plots with residuals analysis) or FALSE (no
 plot), <br/>
+
+(f). `tidy` TRUE-default- (produces a tibble with results) or FALSE (store
+results as list), <br/>
 
 3.  Run and check results. <br/>
 
@@ -289,7 +292,7 @@ model convergence. <br/>
 
 Instructions <br/>
 
-1.  Load your data.frame with soil test value (stv) and relative yield
+1.  Load your data frame with soil test value (stv) and relative yield
     (ry) data. <br/>
 
 2.  Specify the following arguments into the function
@@ -304,10 +307,13 @@ vectors, <br/>
 different \`ry\`\` than the plateau.
 
 (d). `plot` TRUE (produces a ggplot as main output) or FALSE (no plot,
-only results as data.frame), <br/>
+only results as tibble), <br/>
 
 (e). `resid` TRUE (produces plots with residuals analysis) or FALSE (no
 plot), <br/>
+
+(f). `tidy` TRUE-default- (produces a tibble with results) or FALSE (store
+results as list), <br/>
 
 3.  Run and check results. <br/>
 
@@ -341,7 +347,7 @@ parameter by constraining the asymptote = 100 and xintercept = 0
 
 Instructions <br/>
 
-1.  Load your data.frame with soil test value (stv) and relative yield
+1.  Load your data frame with soil test value (stv) and relative yield
     (ry) data. <br/>
 
 2.  Specify the following arguments into the function -mitscherlich()-:
@@ -356,10 +362,13 @@ vectors, <br/>
 `ry`.
 
 (d). `plot` TRUE (produces a ggplot as main output) or FALSE (no plot,
-only results as data.frame), <br/>
+only results as tibble), <br/>
 
 (e). `resid` TRUE (produces plots with residuals analysis) or FALSE (no
 plot), <br/>
+
+(f). `tidy` TRUE-default- (produces a tibble with results) or FALSE (store
+results as list), <br/>
 
 3.  Run and check results. <br/>
 

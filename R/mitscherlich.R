@@ -1,24 +1,26 @@
 #' @name mitscherlich
 #' @title Mitscherlich response function
-#' @description This function helps to fit a Mitscherlich response model for relative yield (ry)
-#' as a function of soil test values (stv).
+#' @description This function helps to fit a Mitscherlich-style exponential
+#' response model for relative yield (ry) as a function of soil test values (stv).
 #' @param data Optional argument to call and object of type data.frame or data.table 
 #' containing the stv and ry data, Default: NULL
 #' @param stv name of the vector containing soil test values (-) of type `numeric`.
 #' @param ry name of the vector containing relative yield values (%) of type `numeric`.
 #' @param target `numeric` value of relative yield target (e.g. 90 for 90%) to estimate the CSTV.
 #' Default: NULL
-#' @param type string or number that indicates the type of Mitscherlich model to fit. Default: 1
-#' `type = "no restrictions"` or `type = 1` for model with 'no restrictions'; 
-#' `type = "asymptote 100"` or `type = 2` for model with 'asymptote = 100';
-#' `type = "asymptote 100 from 0"` or `type = 3` for model with 'asymptote = 100 and xintercept = 0'"
-#' @param tidy logical operator (TRUE/FALSE) to decide the type of return. TRUE returns a data.frame, FALSE returns a list (default).
+#' @param type string or number that indicates the type of Mitscherlich model to fit. Default: 1. 
+#' For model with 'no restrictions' use `type = 1`, `type = "no restriction"`, or `type = "free"`; 
+#' For model with 'asymptote = 100' use `type = 2`, `type = "asymptote 100"`, or `type = "100"`; 
+#' For model with 'asymptote = 100 and xintercept = 0'" `type = 3`, `type = "asymptote 100 from 0"`, or `type = "fixed"`. 
+#' @param tidy logical operator (TRUE/FALSE) to decide the type of return. TRUE returns a tidy data frame or tibble (default), FALSE returns a list.
 #' @param resid logical operator (TRUE/FALSE) to plot residuals analysis, Default: FALSE
 #' @param plot logical operator (TRUE/FALSE) to plot the Mitscherlich model, Default: FALSE
-#' @param a selfstart arg. for asymptote, Default: NULL
-#' @param b selfstart arg. for xintercept Default: NULL
-#' @param c selfstart arg. for curvature Default: NULL
+#' @param a selfstart arg. for asymptote parameter, Default: NULL
+#' @param b selfstart arg. for b parameter (b = -X_intercept) Default: NULL
+#' @param c selfstart arg. for curvature parameter Default: NULL
 #' @param x selfstart vector. for model fit Default: NULL
+#' @param n sample size for the bootstrapping Default: 500
+#' @param ... when running bootstrapped samples, the `...` (open arguments) allows to add grouping variable/s (factor or character) Default: NULL
 #' @rdname mitscherlich
 #' @return returns an object of type `ggplot` if plot = TRUE.
 #' @return returns a residuals plot if resid = TRUE.
@@ -52,15 +54,17 @@
 #' @note For extended reference, we recommend to visit: 
 #' <https://github.com/austinwpearce/SoilTestCocaCola> by Austin Pearce.
 #' @export
-#' @importFrom rlang eval_tidy quo
+#' @importFrom rlang eval_tidy quo enquo
 #' @importFrom minpack.lm nlsLM
 #' @importFrom stats sortedXyData AIC lm optim coef predict
 #' @importFrom AICcmodavg AICc
 #' @importFrom modelr rsquare
 #' @importFrom nlstools nlsResiduals confint2
-#' @importFrom dplyr bind_cols %>% mutate
+#' @importFrom dplyr bind_cols %>% mutate select slice_sample group_by
 #' @importFrom ggplot2 ggplot aes geom_rug geom_point geom_vline geom_hline geom_path annotate scale_y_continuous labs theme_bw theme unit rel element_blank element_text
-#' @importFrom stats lm AIC optim coef predict
+#' @importFrom stats lm AIC optim coef predict anova
+#' @importFrom tidyr nest unnest expand_grid
+#' @importFrom purrr map possibly
 #' @export 
 #' 
 NULL
@@ -86,18 +90,19 @@ mits_formula_3 <- function(x, c){ 100 * (1-exp(-c * x)) }
 mitscherlich <- function(data = NULL,
                          stv,
                          ry,
-                         type,
-                         target = NULL,
-                         tidy = FALSE,
+                         type = 1,
+                         target = 95,
+                         tidy = TRUE,
                          plot = FALSE,
                          resid = FALSE
-                                ) {
-  if (missing(type)) {
+) {
+  if (!(type %in% c(1,2,3,"no restriction", "free", "asymptote 100", "100", 
+                    "asymptote 100 from 0", "fixed"))) {
     stop("Please specify the type of Mitscherlich function using the `type` argument.
-         Options: 
-         Type = 1 for 'no restrictions' model; 
-         Type = 2 for 'asymptote 100' model;
-         Type = 3 for 'asymptote 100 from 0' model")
+          Options: 
+          Type = 1 for 'no restriction' or 'free' model; 
+          Type = 2 for 'asymptote 100' or '100' model;
+          Type = 3 for 'asymptote 100 from 0' or 'fixed' model")
   }
   
   
@@ -107,6 +112,10 @@ mitscherlich <- function(data = NULL,
   
   if (missing(ry)) {
     stop("Please specify the variable name for relative yields using the `ry` argument")
+  }
+  
+  if (is.null(target)) {
+    stop("Please specify the target RY at which the soil test value with be determined. Must be target <= asymptote.")
   }
   
   # Re-define x from stv argument
@@ -123,7 +132,7 @@ mitscherlich <- function(data = NULL,
   # Error message for soil test correlation data on ratio scale
   # Modeling steps depend on percentage scale
   if (max(y) < 2) {
-    stop("The reponse variable does not appear to be on a percentage scale. Please, double check the units of ry.")
+    stop("The reponse variable does not appear to be on a percentage scale. Please, double check the units of RY.")
   }
   
   # Create data.frame if it doesn't exist yet (data from vectors)
@@ -140,126 +149,136 @@ mitscherlich <- function(data = NULL,
   
   # Run the model combining minpack.lm::nlsLM + defined selfStart
   # Type 1, no restrictions
-    if (type == "no restriction" | type == 1) {
-      mitsmodel <-
-        try(minpack.lm::nlsLM(formula = y ~ mits_formula_1(x, a, b, c),
-                              data = test.data,
-                              start = list(a = maxy, b = 0, c = start_c),
-                              lower = c(a = miny, b = -maxx, c = 1e-7),
-                              upper = c(a = Inf, b = 1e3, c = 10)))
-    }
-    # Type 2
-    if (type == "asymptote 100" | type == 2) {
-      mitsmodel <-
-        try(minpack.lm::nlsLM(formula = y ~ mits_formula_2(x, b, c),
-                              data = test.data,
-                              start = list(b = 0, c = start_c),
-                              lower = c(b = -maxx, c = 1e-7),
-                              upper = c(b = 1e3, c = 10)))
-    }
-    # Type 3
-    if (type == "asymptote 100 from 0" | type == 3) {
-      mitsmodel <-
-        try(minpack.lm::nlsLM(formula = y ~ mits_formula_3(x, c),
-                              data = test.data,
-                              start = list(c = start_c),
-                              lower = c(c = 1e-7),
-                              upper = c(c = 10)))
-    }
+  if (type == "no restriction" | type == "free" | type == 1) {
+    mitsmodel <-
+      try(minpack.lm::nlsLM(formula = y ~ mits_formula_1(x, a, b, c),
+                            data = test.data,
+                            start = list(a = maxy, b = 0, c = start_c),
+                            lower = c(a = miny, b = -maxx, c = 1e-7),
+                            upper = c(a = Inf, b = 1e3, c = 10)))
+  }
+  # Type 2
+  if (type == "asymptote 100" | type == "100" | type == 2) {
+    mitsmodel <-
+      try(minpack.lm::nlsLM(formula = y ~ mits_formula_2(x, b, c),
+                            data = test.data,
+                            start = list(b = 0, c = start_c),
+                            lower = c(b = -maxx, c = 1e-7),
+                            upper = c(b = 1e3, c = 10)))
+  }
+  # Type 3
+  if (type == "asymptote 100 from 0" | type == "fixed" | type == 3) {
+    mitsmodel <-
+      try(minpack.lm::nlsLM(formula = y ~ mits_formula_3(x, c),
+                            data = test.data,
+                            start = list(c = start_c),
+                            lower = c(c = 1e-7),
+                            upper = c(c = 10)))
+  }
   
   if (inherits(mitsmodel, "try-error")) {
-    stop("Mitscherlich model did not converge. Please, consider other models.")
+    stop("Mitscherlich model did not converge. Please try another `type = ` argument, or consider other models.")
   } else {
     mitsmodel <- mitsmodel
   }
   
+  # Get p-value of model vs. null, Pr(>F)
+  null_model <- stats::lm(y ~ 1, data = test.data)
+  pvalue <- round(stats::anova(mitsmodel, null_model)[,"Pr(>F)"][[2]], 4)
+  # if (pvalue >= 0.001) {pvalue <- round(pvalue, 3)} else{pvalue <- "<0.001"}
   # Find AIC and pseudo R-squared
   # AIC 
   # It makes sense because it's a sort of "simulation" (using training data) to 
   # test what would happen with out of sample data
-  AIC <- round(stats::AIC(mitsmodel), 0)
-  AICc <- round(AICcmodavg::AICc(mitsmodel), 0)
+  AIC <- round(stats::AIC(mitsmodel), 2)
+  AICc <- round(AICcmodavg::AICc(mitsmodel), 2)
+  BIC <- round(stats::BIC(mitsmodel), 2)
   # R2
   R2 <- round(modelr::rsquare(mitsmodel, test.data), 2)
+  RMSE <- round(modelr::rmse(mitsmodel, test.data), 2)
   
   # get model coefficients
-  if (type == "no restriction" | type == 1) {
+  if (type == "no restriction" | type == "free" | type == 1) {
     a <- stats::coef(mitsmodel)[[1]] # Asymptote
   }
-  if (type == "asymptote 100" | type == 2 | 
-      type == "asymptote 100 from zero" | type == 3) {
+  if (type == "asymptote 100" | type == "100" | type == 2 | 
+      type == "asymptote 100 from zero" | type == "fixed" |  type == 3) {
     a <- 100 # Asymptote = 100
   }
-  # Intercept
-  if (type == "no restriction" | type == 1) {
+  # X_Intercept (b = - X_intercept)
+  if (type == "no restriction" | type == "free" |  type == 1) {
     b <- stats::coef(mitsmodel)[[2]] # Intercept
   }
   
-  if (type == "asymptote 100" | type == 2) {
+  if (type == "asymptote 100" | type == "100" |  type == 2) {
     b <- stats::coef(mitsmodel)[[1]] # Intercept
   }
   
-  if (type == "asymptote 100 from 0" | type == 3) {
+  if (type == "asymptote 100 from 0" | type == "fixed" |  type == 3) {
     b <- 0 # Intercept
   }
   
   # Curvature
-  if (type == "no restriction" | type == 1) {
+  if (type == "no restriction" | type == "free" |  type == 1) {
     c <- stats::coef(mitsmodel)[[3]] # curvature
   }
   
-  if (type == "asymptote 100" | type == 2) {
+  if (type == "asymptote 100" | type == "100" |  type == 2) {
     c <- stats::coef(mitsmodel)[[2]] # curvature
   }
   
-  if (type == "asymptote 100 from 0" | type == 3) {
+  if (type == "asymptote 100 from 0" | type == "fixed" |  type == 3) {
     c <- stats::coef(mitsmodel)[[1]] # curvature
   }
   
   ## Derived vars
-  target <- ifelse(is.null(target),
-                   a,
-                   target)
+  if (target > a) {
+    warning("Target RY > asymptote. Please choose a target <= asymptote.")
+  }
   
-  CSTV <- ifelse(is.null(target), 
-                 NA,
-                 (log(1 - (target/a)) / -c) - b )
+  CSTV <- (log(1 - (target/a)) / -c) - b
   
-#  CSTV_target <- log((target - a) / (b-a)) / -c
+  # for displaying rounded CSTV on plots
+  CSTVr <- ifelse(CSTV > 10, round(CSTV), round(CSTV, 1))
+  
+  #  CSTV_target <- log((target - a) / (b-a)) / -c
   # There are no confidence interval for CSTV as it is not a parameter
   
   # have to make a line because the SS_mits doesn't plot right
-    if (type == "no restriction" | type == 1) {
-      mits_line <-
+  if (type == "no restriction" | type == "free" |  type == 1) {
+    mits_line <-
       data.frame(x = seq(minx, maxx, by = maxx/200)) %>%
       dplyr::mutate(y = mits_formula_1(x, a, b, c) ) }
-    
-    if (type == "asymptote 100" | type == 2) {
-      mits_line <-
+  
+  if (type == "asymptote 100" | type == "100" |  type == 2) {
+    mits_line <-
       data.frame(x = seq(minx, maxx, by = maxx/200)) %>%
       dplyr::mutate(y = mits_formula_2(x, b, c) ) }
-    
-    if (type == "asymptote 100 from zero" | type == 3) {
-      mits_line <-
+  
+  if (type == "asymptote 100 from zero" | type == "fixed" |  type == 3) {
+    mits_line <-
       data.frame(x = seq(minx, maxx, by = maxx/200)) %>%
       dplyr::mutate(y = mits_formula_3(x, c) ) }
-    
-    
+  
+  
   # Equation
   if (b > 0) { 
     equation <- paste0(round(a, 1), "(1-e^(-", 
                        round(c, 3), "(x+",
-                       round(b, 1), ")")
-     }
+                       round(b, 1), "))")
+  }
   if (b == 0) { 
     equation <- paste0(round(a, 1), "(1-e^(-", 
-                       round(c, 3), "x)")
+                       round(c, 3), "x))")
   }
   if (b < 0) { 
     equation <- paste0(round(a, 1), "(1-e^(-", 
                        round(c, 3), "(x",
-                       round(b, 1), ")")
+                       round(b, 1), "))")
   }
+  
+  # Y-intercept
+  y_intercept = a * (1 - exp(-c * b))
   
   ## STAGE 2 ====================================================================
   ## Outputs
@@ -269,26 +288,30 @@ mitscherlich <- function(data = NULL,
       if (resid == TRUE)
         plot(nlstools::nlsResiduals(mitsmodel), which = 0)
     }
-    results <- data.frame(
-      a = round(a, 2),
-      b = round(b, 2),
-      c = round(c, 2),
+    results <- dplyr::tibble(
+      asymptote = a,
+      b, 
+      curvature = c,
       equation,
-      target = ifelse(is.null(target), 
-                      round(a, 2),
-                      round(target, 0)),
-      CSTV = round(CSTV, 1),
+      y_intercept,
+      target,
+      CSTV,
       AIC,
       AICc,
-      R2
-      )
+      BIC,
+      R2,
+      RMSE,
+      pvalue
+    )
     
     # Decide type of output
-    if (tidy == TRUE) {results <- results}
-    
-    if (tidy == FALSE) {results <- as.list(results)}
-    
-    return(results)
+    if (tidy == TRUE) {
+      
+      return(results)
+    } else if (tidy == FALSE) {
+      
+      return(as.list(results))
+    }
     
   } else {
     # Residual plots and normality
@@ -308,45 +331,67 @@ mitscherlich <- function(data = NULL,
       ggplot2::geom_rug(alpha = 0.2, length = ggplot2::unit(2, "pt")) +
       # Data points
       ggplot2::geom_point(shape = 21, size = 3, alpha = 0.75, fill = "#e09f3e") +
+      # Mits Curve
+      ggplot2::geom_path(data = mits_line, ggplot2::aes(x, y),
+                         color = "grey15", linewidth = 1) +
       # CSTV (if target defined)
       {
         if(!is.na(CSTV))
-        ggplot2::geom_vline(xintercept = CSTV, alpha = 1, color = "#13274F", 
-                          size = 0.5, linetype = "dashed") 
-          } +
+          ggplot2::geom_vline(xintercept = CSTV, alpha = 1, color = "#13274F", 
+                              linewidth = 0.5, linetype = "dashed") 
+      } +
       # Target
       ggplot2::geom_hline(yintercept = target, alpha = 0.2) +
-      # Mits Curve
-      ggplot2::geom_path(data = mits_line, ggplot2::aes(x=x, y=y), color="grey15", size = 1.5) +
       # Text annotations
       # CSTV
       {
         if(!is.na(CSTV))
-          ggplot2::annotate("text",label = paste("STVt =", round(CSTV,1), "ppm"),
-                            x = CSTV, y = 0, angle = 90, hjust = 0, vjust = 1.5, col = "grey25") 
+          ggplot2::annotate("text",
+                            label = paste("CSTV =", CSTVr, "ppm"),
+                            x = CSTV, y = 0,
+                            angle = 90, hjust = 0, vjust = 1.5, col = "grey25") 
       } +
       # Target if null
       {
         if(target == a)
-          ggplot2::annotate("text",label = paste0("Asym = ", round(target, 0), "%"),
-                            x = maxx, y = target, hjust = 1,vjust = 1.5, col = "grey25") 
+          ggplot2::annotate("text",
+                            label = paste0("Asym = ", round(target, 1), "%"),
+                            x = maxx, y = target,
+                            hjust = 1,vjust = 1.5, col = "grey25") 
       } +
       # Target if target == a
       {
         if(target != a)
-          ggplot2::annotate("text",label = paste0("Target = ", round(target, 0), "%"),
-                            x = maxx, y = target, hjust = 1,vjust = 1.5, col = "grey25") 
+          ggplot2::annotate("text",
+                            label = paste0("Target = ", round(target, 1), "%"),
+                            x = maxx, y = target,
+                            hjust = 1,vjust = 1.5, col = "grey25") 
       } +
       ggplot2::annotate("text", col = "grey25",
                         label = paste0("y = ", equation,
                                        "\nn = ", nrow(test.data),
                                        "\npseudo-R2 = ", R2,
                                        "\nAICc = ", AICc
-                                       ),
+                        ),
                         x = maxx, y = 0, vjust = 0, hjust = 1) +
-      ggplot2::scale_y_continuous(limits = c(0, maxy),breaks=seq(0,maxy*2,10)) +
-      ggplot2::labs(x = "Soil test value (units)", y = "Relative yield (%)",
-                    title = "Mitscherlich")+
+      # Giving more flexibility to x scale
+      ggplot2::scale_x_continuous(
+        breaks = seq(0, maxx,
+                     by = ifelse(maxx >= 300, 50,
+                                 ifelse(maxx >= 200, 20,
+                                  ifelse(maxx >= 100, 10, 
+                                   ifelse(maxx >= 50, 5,
+                                    ifelse(maxx >= 20, 2,
+                                     ifelse(maxx >= 10, 1,
+                                      ifelse(maxx >= 5, 0.5,
+                                       ifelse(maxx >= 1, 0.2, 
+                                              0.1))))))))) ) +
+      # Y-axis scale
+      ggplot2::scale_y_continuous(limits = c(0, maxy),
+                                  breaks = seq(0, maxy * 2, 10)) +
+      ggplot2::labs(x = "Soil test value (units)",
+                    y = "Relative yield (%)",
+                    title = "Mitscherlich-type Exponential Response")+
       ggplot2::theme_bw()+
       ggplot2::theme(panel.grid = ggplot2::element_blank(),
                      axis.title = ggplot2::element_text(size = ggplot2::rel(1.5)))
@@ -355,3 +400,42 @@ mitscherlich <- function(data = NULL,
   }
   
 }
+
+#' @rdname mitscherlich
+#' @return boot_mitscherlich: bootstrapping function
+#' @export 
+boot_mitscherlich <- 
+  function(data, stv, ry, type = 1, n = 999, target = 95, ...) {
+    # Allow customized column names
+    x <- rlang::enquo(stv)
+    y <- rlang::enquo(ry)
+    
+    # Empty global variables
+    boot_id <- NULL
+    boots <- NULL
+    model <- NULL
+    equation <- NULL
+    
+    output_df <- data %>%  
+      dplyr::select(!!x, !!y, ...) %>%
+      tidyr::expand_grid(boot_id = seq(1, n, by = 1)) %>%
+      dplyr::group_by(boot_id, ...) %>%
+      tidyr::nest(boots = c(!!x, !!y)) %>% 
+      dplyr::mutate(boots = boots %>% 
+                      purrr::map(function(boots) 
+                        dplyr::slice_sample(boots, 
+                                            replace = TRUE, n = nrow(boots)))) %>% 
+      dplyr::mutate(
+        model = map(boots, purrr::possibly(
+          .f = ~ soiltestcorr::mitscherlich(
+            data = ., ry = !!y, stv = !!x,
+            type = type, target = target)), 
+          otherwise = NULL, quiet = TRUE)) %>%
+      dplyr::select(-boots) %>% 
+      tidyr::unnest(cols = model) %>%
+      # Irrelevant columns
+      dplyr::select(-equation) %>% 
+      dplyr::ungroup()
+    
+    return(output_df)
+  }
